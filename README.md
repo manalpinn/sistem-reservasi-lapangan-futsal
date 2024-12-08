@@ -21,12 +21,6 @@ Aplikasi untuk memesan lapangan olahraga, mengelola jadwal, dan memilih berbagai
 *   **Antarmuka Teks**: Antarmuka pengguna berbasis teks yang ramah pengguna dan mudah digunakan.
     
 
-**Screencapture**
------------------
-
-Berikut adalah contoh tampilan layar antarmuka pengguna:
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   lessSalin kode===== BUAT PESANAN =====  Nama Tim Anda: [Input Nama]  Masukkan nomor HP (dalam format lokal atau internasional): [Input Nomor]  Daftar Lapangan yang Tersedia:  1. Lapangan A  2. Lapangan B  Pilih ID Lapangan: [Input ID Lapangan]  Pilih Jam Tersedia untuk Lapangan ID 1:  1. Senin, 12-12-2024 (08:00 - 10:00) - Tersedia  2. Senin, 12-12-2024 (10:00 - 12:00) - Sudah Dipesan  Pilih nomor jadwal: [Input Nomor Jadwal]  Pilih Snack (masukkan ID, 0 untuk selesai):  1. Snack A (Rp 5000)  2. Snack B (Rp 10000)  Masukkan ID Snack (0 untuk selesai): [Input ID Snack]  Pilih opsi pembayaran:  1. Bayar Sekarang  2. Bayar Nanti  Pilih: [Input Pilihan]  Pembayaran berhasil diproses. Terima kasih!   `
 
 **Instalasi dan Penggunaan**
 ----------------------------
@@ -37,13 +31,13 @@ Sebelum menjalankan aplikasi, pastikan Anda memiliki **compiler C++** yang terin
 
 ### Langkah Instalasi
 
-1.  bashSalin kodegit clone https://github.com/manalpinn/sistem-reservasi-lapangan-futsal.git
+1.  Salin kodegit clone https://github.com/manalpinn/sistem-reservasi-lapangan-futsal.git
     
-2.  bashSalin kodecd repository-name
+2.  Salin kode cd repository-name
     
-3.  Salin kodeg++ -o sistem-pemesanan sistem-pemesanan.cpp
+3.  Salin kode g++ -o sistem-pemesanan sistem-pemesanan.cpp
     
-4.  bashSalin kode./sistem-pemesanan
+4.  Salin kode./sistem-pemesanan
     
 
 ### Penggunaan
