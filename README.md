@@ -37,7 +37,7 @@ Sebelum menjalankan aplikasi, pastikan Anda memiliki **compiler C++** yang terin
 
 ### Langkah Instalasi
 
-1.  bashSalin kodegit clone https://github.com/username/repository-name.git
+1.  bashSalin kodegit clone https://github.com/manalpinn/sistem-reservasi-lapangan-futsal.git
     
 2.  bashSalin kodecd repository-name
     
@@ -82,9 +82,3 @@ Terima Kasih
 
 Terima kasih kepada Tuhan Yang Maha Esa atas berkat dan karunia-Nya yang memungkinkan kami untuk menyelesaikan proyek ini.
 
-Lisensi
--------
-
-Proyek ini dilisensikan di bawah **MIT License**.
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   Salin kode  README ini sudah mencakup fitur utama, cara penggunaan, instruksi instalasi, dan terima kasih kepada Tuhan atas bantuan-Nya. Anda dapat mengganti nama anggota kelompok sesuai dengan yang sesuai!   `
