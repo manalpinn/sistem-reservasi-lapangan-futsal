@@ -6,6 +6,7 @@
 #include <string>
 #include <regex>
 #include <limits>
+#include <iomanip>
 #include <curl/curl.h>
 
 using namespace std;
