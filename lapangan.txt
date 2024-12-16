@@ -1,1 +1,6 @@
-1,Lapangan sintetis,75000
+1,Lapangan A,100000,Tersedia
+2,Lapangan B,150000,Tersedia
+3,Lapangan C,200000,Tersedia
+4,Lapangan Sintetis,40000,Tersedia
+5,Lapangan bagus,70000,Penuh
+6,lapangan coba coba,20000,Tersedia
