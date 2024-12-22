@@ -7,6 +7,9 @@
 #include <regex>
 #include <limits>
 #include <iomanip>
+#include <thread>
+#include <chrono>
+#include <algorithm>
 #include <curl/curl.h>
 
 using namespace std;
@@ -39,13 +42,16 @@ struct Snack
 
 struct Pesanan
 {
+    int nomorUrut;
     int idPesanan;
     string namaUser;
     string nomorHp;
     int idLapangan;
     Jadwal jam;
     vector<int> snackIds;
+    vector<int> snackQuantities;
     int totalHarga;
+    int totalHargaLapangan;
     bool statusPembayaran;
 };
 
@@ -128,9 +134,11 @@ int main()
 void loginMenu()
 {
     int pilihan;
+
     do
     {
         clearScreen();
+
         cout << R"(
 ▗▄▄▖ ▗▄▄▄▖▗▄▄▖ ▗▖ ▗▖ ▗▄▖ ▗▖ ▗▖    ▗▄▄▄▖▗▖ ▗▖▗▄▄▄▖ ▗▄▄▖ ▗▄▖ ▗▖   
 ▐▌ ▐▌▐▌   ▐▌ ▐▌▐▌▗▞▘▐▌ ▐▌▐▌ ▐▌    ▐▌   ▐▌ ▐▌  █  ▐▌   ▐▌ ▐▌▐▌   
@@ -145,12 +153,13 @@ void loginMenu()
         cout << "Pilih: ";
         cin >> pilihan;
 
-        if (cin.fail())
+        if (cin.fail() || pilihan < 1 || pilihan > 3) // Validasi input
         {
-            cin.clear();                                         // Membersihkan status kesalahan
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Mengabaikan sisa input yang salah
-            cout << "Input tidak valid. Harap masukkan angka yang benar.\n";
-            continue; // Kembali ke awal do-while untuk meminta input lagi
+            cin.clear();                                                                         // Menghapus flag error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');                                 // Mengosongkan buffer input
+            cout << "\033[1;31m\nInput tidak valid. Masukkan angka antara 1 hingga 3.\033[0m\n"; // Pesan berwarna merah
+            this_thread::sleep_for(chrono::seconds(2));                                          // Jeda 2 detik
+            continue;                                                                            // Kembali ke awal loop
         }
 
         switch (pilihan)
@@ -164,68 +173,89 @@ void loginMenu()
         case 3:
             cout << "Terima kasih!\n";
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
         }
-        cout << "\nTekan Enter untuk melanjutkan...\n";
-        cin.ignore(); // Membersihkan newline di buffer
-        cin.get();    // Menunggu input Enter dari pengguna
-
     } while (pilihan != 3);
 }
 
 void adminMenu()
 {
-    clearScreen();
+
     string username, password;
-    cout << "\n===== LOGIN ADMIN =====\n";
-    cout << "Username: ";
-    cin >> username;
-    cout << "Password: ";
-    cin >> password;
-
-    if (username == "admin" && password == "1234")
+    int attempts = 3; // Batas percobaan login
+    clearScreen();
+    while (attempts > 0)
     {
-        clearScreen();
-        int pilihan;
-        do
+        cout << "\n===== LOGIN ADMIN =====\n";
+        cout << "Username: ";
+        cin >> username;
+        cout << "Password: ";
+        cin >> password;
+
+        if (username == "admin" && password == "1234")
         {
-
-            cout << "\n===== MENU ADMIN =====\n";
-            cout << "1. Kelola Lapangan\n";
-            cout << "2. Kelola Jadwal\n";
-            cout << "3. Kelola Snack\n";
-            cout << "4. Kelola Pemesanan\n";
-            cout << "5. Kembali\n";
-            cout << "Pilih: ";
-            cin >> pilihan;
-
-            switch (pilihan)
+            int pilihan;
+            do
             {
-            case 1:
-                crudLapangan();
-                break;
-            case 2:
-                crudJadwal();
-                break;
-            case 3:
-                crudSnack();
-                break;
-            case 4:
-                crudPemesanan();
-                break;
-            case 5:
-                cout << "Kembali ke menu utama.\n";
-                break;
-            default:
-                cout << "Pilihan tidak valid.\n";
-            }
-        } while (pilihan != 5);
+                clearScreen();
+                cout << "\n===== MENU ADMIN =====\n";
+                cout << "1. Kelola Lapangan\n";
+                cout << "2. Kelola Jadwal\n";
+                cout << "3. Kelola Snack\n";
+                cout << "4. Kelola Pemesanan\n";
+                cout << "5. Kembali\n";
+                cout << "Pilih: ";
+                cin >> pilihan;
+
+                // Validasi input pilihan
+                if (cin.fail() || pilihan < 1 || pilihan > 5)
+                {
+                    cin.clear();                                         // Membersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Menghapus input yang salah
+                    cout << "\033[1;31m\nInput tidak valid. Harap masukkan angka antara 1 hingga 5.\033[0m\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    continue;
+                }
+
+                switch (pilihan)
+                {
+                case 1:
+                    crudLapangan();
+                    break;
+                case 2:
+                    crudJadwal();
+                    break;
+                case 3:
+                    crudSnack();
+                    break;
+                case 4:
+                    crudPemesanan();
+                    break;
+                case 5:
+                    cout << "Kembali ke menu utama.\n";
+                    break;
+                }
+            } while (pilihan != 5);
+            return; // Keluar dari fungsi jika login berhasil dan menu selesai
+        }
+        else
+        {
+            attempts--;
+            cout << "\033[1;31m\nUsername atau password salah! Anda memiliki " << attempts << " percobaan lagi.\033[0m\n";
+        }
     }
-    else
+
+    int countdown = 10; // Waktu hitung mundur dalam detik
+    cout << "\n";
+    while (countdown > 0)
     {
-        cout << "Username atau password salah!\n";
+        cout << "\rMenunggu " << countdown << " detik sebelum mencoba lagi..." << flush;
+        this_thread::sleep_for(chrono::seconds(1));
+        countdown--;
     }
+
+    clearScreen(); // Bersihkan layar setelah hitungan mundur selesai
+    cout << "Silakan coba lagi nanti.\n";
+    this_thread::sleep_for(chrono::seconds(2));
 }
 
 void perbaruiIDLapangan()
@@ -237,13 +267,8 @@ void perbaruiIDLapangan()
 }
 void tampilkanLapangan()
 {
-
-    if (lapanganList.empty())
-    {
-        cout << "Belum ada data lapangan yang tersedia." << endl;
-        return;
-    }
     // Menampilkan header tabel
+    cout << endl;
     cout << left << setw(5) << "ID" << setw(25) << "Nama Lapangan" << setw(15) << "Harga" << setw(15) << "Status" << endl;
     cout << "--------------------------------------------------" << endl;
 
@@ -258,11 +283,13 @@ void tampilkanLapangan()
              << endl;
     }
 }
+
 void crudLapangan()
 {
     int pilihan;
     do
     {
+        clearScreen();
         cout << "\n===== KELOLA LAPANGAN =====\n";
         cout << "1. Tambah Lapangan\n";
         cout << "2. Tampilkan Lapangan\n";
@@ -272,168 +299,318 @@ void crudLapangan()
         cout << "Pilih: ";
         cin >> pilihan;
 
+        // Validasi input pilihan
+        if (cin.fail() || pilihan < 1 || pilihan > 5)
+        {
+            cin.clear();                                         // Membersihkan flag error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan buffer
+            cout << "\033[1;31m\nPilihan tidak valid. Masukkan angka antara 1 hingga 5.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
+            continue; // Kembali ke awal loop
+        }
+
         switch (pilihan)
         {
-        case 1:
-        { // Tambah Lapangan
+
+        case 1: // Tambah Lapangan
+        {
             Lapangan lap;
             lap.id = lapanganList.size() + 1; // ID dihitung berdasarkan jumlah elemen
-            cout << "Nama Lapangan: ";
-            cin.ignore();
-            getline(cin, lap.nama);
-            cout << "Harga Lapangan: ";
-            cin >> lap.harga;
-            lap.status = "Tersedia";
+
+            cin.ignore(); // Membersihkan buffer input sebelum loop
+            while (true)
+            {
+                cout << "\nNama Lapangan (atau ketik '0' untuk batal): ";
+                getline(cin, lap.nama);
+
+                // Cek apakah pengguna ingin membatalkan
+                if (lap.nama == "0")
+                {
+                    cout << "\nKembali ke menu kelola lapangan.\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                    break; // Keluar dari case
+                }
+
+                // Validasi input kosong atau hanya spasi
+                if (lap.nama.empty() || lap.nama.find_first_not_of(" \t") == string::npos)
+                {
+                    cout << "\033[31mNama lapangan tidak boleh kosong atau hanya spasi!\033[0m\n";
+                    continue;
+                }
+
+                // Validasi nama duplikat
+                bool duplikat = false;
+                for (const auto &l : lapanganList)
+                {
+                    if (l.nama == lap.nama)
+                    {
+                        cout << "\033[31mNama lapangan sudah ada, gunakan nama lain!\033[0m\n";
+                        duplikat = true;
+                        break;
+                    }
+                }
+
+                if (!duplikat)
+                    break; // Keluar dari loop jika valid
+            }
+
+            if (lap.nama == "0")
+            {
+                break;
+            }
+
+            // Validasi harga lapangan
+            while (true)
+            {
+                cout << "\nHarga Lapangan: ";
+                cin >> lap.harga;
+
+                if (cin.fail() || lap.harga <= 0)
+                {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\033[31mHarga lapangan harus berupa angka positif!\033[0m\n";
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            lap.status = "Tersedia"; // Status default
             lapanganList.push_back(lap);
-            simpanLapangan();
-            cout << "Lapangan berhasil ditambahkan.\n";
+            simpanLapangan(); // Simpan ke file atau database
+            cout << "\033[1;32m\nLapangan berhasil ditambahkan.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
         }
-        case 2:
-        { // Tampilkan Lapangan
-            cout << "\nDaftar Lapangan:\n";
+
+        case 2: // Tampilkan Lapangan
+        {
             if (lapanganList.empty())
             {
-                cout << "Tidak ada lapangan.\n";
+                cout << "\nTidak ada data lapangan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
             }
             else
             {
-                tampilkanLapangan();
+                tampilkanLapangan(); // Menampilkan semua lapangan yang ada
+
+                // Memberikan pesan kepada pengguna untuk kembali ke menu setelah menampilkan lapangan
+                cout << "\nTekan Enter untuk kembali ke menu kelola lapangan...";
+                cin.ignore();
+                cin.get(); // Menunggu pengguna menekan Enter
+                break;
             }
             break;
         }
-        case 3:
-        { // Hapus Lapangan
+
+        case 3: // Hapus Lapangan
+        {
             if (lapanganList.empty())
             {
-                cout << "Tidak ada data lapangan untuk dihapus.\n";
+                cout << "\nTidak ada data lapangan untuk dihapus.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
 
-            cout << "\nDaftar Lapangan:\n";
             tampilkanLapangan();
             int id;
             bool found = false;
 
-            // Looping untuk meminta ID hingga valid
             while (!found)
             {
-                cout << "Masukkan ID Lapangan yang ingin dihapus: ";
+                cout << "\nMasukkan ID Lapangan yang ingin dihapus (atau ketik '0' untuk batal) : ";
                 cin >> id;
+
+                if (cin.fail())
+                {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\033[31mInput tidak valid. Masukkan angka ID.\033[0m\n";
+                    continue;
+                }
+
+                if (id == 0)
+                {
+                    cout << "\nKembali ke menu kelola lapangan.\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                    break;
+                }
 
                 for (size_t i = 0; i < lapanganList.size(); ++i)
                 {
                     if (lapanganList[i].id == id)
                     {
-                        // Konfirmasi sebelum menghapus
-                        cout << "Anda yakin ingin menghapus \"" << lapanganList[i].nama << "\"? (y/n): ";
-                        char konfirmasi;
-                        cin >> konfirmasi;
-
-                        if (konfirmasi == 'y' || konfirmasi == 'Y')
-                        {
-                            lapanganList.erase(lapanganList.begin() + i);
-                            perbaruiIDLapangan(); // Perbarui ID agar tetap berurutan
-                            simpanLapangan();
-                            cout << "Data berhasil dihapus.\n";
-                        }
-                        else
-                        {
-                            cout << "Penghapusan dibatalkan.\n";
-                        }
-                        found = true; // Keluar dari loop jika ID ditemukan
-                        break;
-                    }
-                }
-
-                if (!found)
-                {
-                    cout << "ID Lapangan tidak ditemukan. Silakan coba lagi.\n";
-                }
-            }
-            break;
-        }
-
-        case 4:
-        { // Edit Lapangan
-            if (lapanganList.empty())
-            {
-                cout << "Tidak ada data lapangan untuk diedit.\n";
-                break;
-            }
-
-            tampilkanLapangan();
-
-            int id;
-            bool found = false;
-
-            // Looping hingga pengguna memasukkan ID yang valid
-            while (!found)
-            {
-                cout << "Masukkan ID Lapangan yang ingin diedit: ";
-                cin >> id;
-
-                // Cari ID dalam daftar
-                for (size_t i = 0; i < lapanganList.size(); ++i)
-                {
-                    if (lapanganList[i].id == id)
-                    {
-                        found = true;
-
-                        // Input nama lapangan baru
-                        cout << "Nama Lapangan Baru (" << lapanganList[i].nama << "): ";
-                        cin.ignore();
-                        getline(cin, lapanganList[i].nama);
-
-                        // Input harga lapangan baru
-                        cout << "Harga Lapangan Baru (" << lapanganList[i].harga << "): ";
-                        while (!(cin >> lapanganList[i].harga) || lapanganList[i].harga <= 0)
-                        {
-                            cin.clear();
-                            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                            cout << "Harga tidak valid. Masukkan angka positif.\nHarga Lapangan Baru: ";
-                        }
-
-                        // Input status lapangan baru
-                        cout << "Status Lapangan Baru (" << lapanganList[i].status << ") [Tersedia/Penuh]: ";
-                        cin.ignore();
-                        string status;
                         while (true)
                         {
-                            getline(cin, status);
-                            if (status == "Tersedia" || status == "Penuh")
+                            cout << "\033[1;33m\nYakin ingin menghapus? (y/n):\033[0m";
+                            char konfirmasi;
+                            cin >> konfirmasi;
+                            // Validasi input
+                            if (konfirmasi == 'y' || konfirmasi == 'Y')
                             {
-                                lapanganList[i].status = status;
-                                break;
+                                lapanganList.erase(lapanganList.begin() + i);
+                                perbaruiIDLapangan(); // Perbarui ID
+                                simpanLapangan();
+                                cout << "\033[1;32m\nLapangan berhasil dihapus.\n\033[0m\n";
+                                this_thread::sleep_for(chrono::seconds(1));
+                                break; // Keluar dari loop setelah konfirmasi berhasil
+                            }
+                            else if (konfirmasi == 'n' || konfirmasi == 'N')
+                            {
+                                cout << "\nLapangan tidak dihapus.\n";
+                                this_thread::sleep_for(chrono::seconds(1));
+                                break; // Keluar dari loop jika user memilih tidak
                             }
                             else
                             {
-                                cout << "Status tidak valid. Masukkan 'Tersedia' atau 'Penuh': ";
+                                // Jika input tidak valid
+                                cout << "\nInput tidak valid! Harap masukkan 'y' untuk Ya atau 'n' untuk Tidak.\n";
                             }
                         }
-
-                        simpanLapangan();
-                        cout << "Lapangan berhasil diedit.\n";
+                        found = true;
                         break;
                     }
                 }
 
                 if (!found)
                 {
-                    cout << "ID Lapangan tidak ditemukan. Silakan coba lagi.\n";
+                    cout << "\033[31mID tidak ditemukan. Coba lagi.\033[0m\n";
                 }
             }
             break;
         }
 
-        case 5: // Kembali
-            cout << "Kembali ke menu utama.\n";
+        case 4: // Edit Lapangan
+        {
+            if (lapanganList.empty())
+            {
+                cout << "\nTidak ada data lapangan untuk diedit.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
+            }
+
+            tampilkanLapangan(); // Menampilkan daftar lapangan
+            int id;
+            bool found = false;
+
+            while (!found)
+            {
+                cout << "\nMasukkan ID Lapangan yang ingin diedit (atau ketik '0' untuk batal) : ";
+                cin >> id;
+
+                if (cin.fail())
+                {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\033[31mInput tidak valid. Masukkan angka ID.\033[0m\n";
+                    continue;
+                }
+
+                if (id == 0)
+                {
+                    cout << "\nKembali ke menu kelola lapangan.\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                    break;
+                }
+
+                for (auto &lap : lapanganList)
+                {
+                    if (lap.id == id)
+                    {
+                        found = true;
+
+                        // Edit nama lapangan
+                        while (true)
+                        {
+                            cout << "\nNama Baru (" << lap.nama << "): ";
+                            cin.ignore(); // Membersihkan buffer input
+                            string namaBaru;
+                            getline(cin, namaBaru);
+
+                            if (namaBaru.empty() || namaBaru.find_first_not_of(" \t") == string::npos)
+                            {
+                                cout << "\033[31mNama tidak boleh kosong atau hanya spasi!\033[0m\n";
+                                continue;
+                            }
+
+                            // Periksa apakah nama baru sudah ada
+                            bool duplikat = false;
+                            for (const auto &l : lapanganList)
+                            {
+                                if (l.nama == namaBaru && l.id != lap.id)
+                                {
+                                    cout << "\033[31mNama lapangan sudah ada, silakan masukkan nama yang berbeda.\033[0m\n";
+                                    duplikat = true;
+                                    break;
+                                }
+                            }
+
+                            if (!duplikat)
+                            {
+                                lap.nama = namaBaru;
+                                break;
+                            }
+                        }
+
+                        // Edit harga lapangan
+                        cout << "\nHarga Baru (" << lap.harga << "): ";
+                        while (!(cin >> lap.harga) || lap.harga <= 0)
+                        {
+                            cin.clear();
+                            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                            cout << "\033[31mHarga tidak valid. Masukkan angka positif!\033[0m\n\nHarga Lapangan Baru: ";
+                        }
+
+                        // Edit status lapangan
+                        cout << "\nStatus Baru (" << lap.status << ") [Tersedia/Penuh]: ";
+                        cin.ignore(); // Membersihkan buffer input
+                        while (true)
+                        {
+                            string statusBaru;
+                            getline(cin, statusBaru);
+
+                            if (statusBaru == "Tersedia" || statusBaru == "Penuh")
+                            {
+                                lap.status = statusBaru;
+                                break;
+                            }
+
+                            cout << "\033[31mStatus tidak valid. Masukkan 'Tersedia' atau 'Penuh'.\033[0m\n\nStatus Lapangan Baru: ";
+                        }
+
+                        // Simpan perubahan
+                        simpanLapangan();
+                        cout << "\033[1;32m\nLapangan berhasil diedit.\033[0m\n";
+                        this_thread::sleep_for(chrono::seconds(1));
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    cout << "\033[31mID tidak ditemukan. Coba lagi.\033[0m\n";
+                }
+            }
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
+        }
+
+        case 5:
+            cout << "\nKembali ke menu utama.\n";
+            this_thread::sleep_for(chrono::seconds(1));
+            break;
         }
     } while (pilihan != 5);
 }
+
 void loadLapangan()
 {
     ifstream inFile("lapangan.txt");
@@ -511,13 +688,8 @@ string NamaLapangan(const vector<Lapangan> &lapanganList, int idLapangan)
 
 void tampilkanJadwal()
 {
-
-    if (jadwalList.empty())
-    {
-        cout << "Belum ada data jadwal yang tersedia." << endl;
-        return;
-    }
     // Menampilkan header tabel dengan format yang rapi
+    cout << endl;
     cout << "\n===== DAFTAR JADWAL =====\n";
     cout << "-----------------------------------------------------------\n";
     cout << left
@@ -525,8 +697,7 @@ void tampilkanJadwal()
          << setw(15) << "Nama Lapangan"
          << setw(10) << "Hari"
          << setw(15) << "Tanggal"
-         << setw(12) << "Jam Mulai"
-         << setw(12) << "Jam Selesai"
+         << setw(15) << "Jam "
          << setw(10) << "Status"
          << endl;
     cout << "-----------------------------------------------------------\n";
@@ -541,8 +712,7 @@ void tampilkanJadwal()
              << setw(15) << namaLapangan
              << setw(10) << jadwalList[i].hari
              << setw(15) << jadwalList[i].tanggal
-             << setw(12) << jadwalList[i].jamMulai
-             << setw(12) << jadwalList[i].jamSelesai
+             << setw(15) << pesananList[i].jam.jamMulai + " - " + pesananList[i].jam.jamSelesai
              << setw(10) << jadwalList[i].status
              << endl;
     }
@@ -555,6 +725,7 @@ void crudJadwal()
 
     do
     {
+        clearScreen();
         cout << "\n===== KELOLA JADWAL =====\n";
         cout << "1. Tambah Jadwal\n";
         cout << "2. Tampilkan Jadwal\n";
@@ -564,33 +735,61 @@ void crudJadwal()
         cout << "Pilih: ";
         cin >> pilihan;
 
+        if (cin.fail() || pilihan < 1 || pilihan > 5)
+        {
+            cin.clear();                                         // Membersihkan flag error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan buffer
+            cout << "\033[31m\nPilihan tidak valid. Masukkan angka antara 1 hingga 5.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
+            continue; // Kembali ke awal loop
+        }
+
         switch (pilihan)
         {
         case 1:
-        { // Tambah Jadwal
+        {
+            // Tambah Jadwal
             Jadwal jadwal;
             jadwal.id = jadwalList.empty() ? 1 : jadwalList.back().id + 1; // ID unik berdasarkan ID terakhir
 
             // Menampilkan daftar lapangan yang tersedia
-            cout << "Daftar Lapangan yang Tersedia:\n";
             if (lapanganList.empty())
             {
-                cout << "Tidak ada lapangan yang tersedia.\n";
+                cout << "\nTidak ada data lapangan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
             else
             {
-                for (const auto &lapangan : lapanganList)
-                {
-                    cout << lapangan.id << ". " << lapangan.nama << "\n";
-                }
+                tampilkanLapangan(); // Menampilkan semua lapangan yang ada
             }
 
             // Validasi ID Lapangan
             while (true)
             {
-                cout << "Masukkan ID Lapangan: ";
+                cout << "\nMasukkan ID Lapangan (hanya angka, 0 untuk batal): ";
                 cin >> jadwal.idLapangan;
+
+                // Validasi apakah input valid
+                if (cin.fail() || jadwal.idLapangan < 0)
+                {
+                    cout << "\033[31mInput ID tidak valid. Masukkan angka id.\033[0m\n";
+                    cin.clear();                                         // Membersihkan flag error
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Mengabaikan input yang salah
+                    continue;
+                }
+
+                // Jika pengguna memilih batal
+                if (jadwal.idLapangan == 0)
+                {
+                    cout << "Penambahan jadwal dibatalkan. Kembali ke menu Kelola Jadwal.\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    break;
+                }
+
+                // Validasi apakah ID Lapangan ada dalam daftar
                 bool idValid = false;
                 for (const auto &lapangan : lapanganList)
                 {
@@ -600,60 +799,144 @@ void crudJadwal()
                         break;
                     }
                 }
-                if (idValid)
-                    break;
+
+                if (!idValid)
+                {
+                    cout << "\033[31mID Lapangan tidak ditemukan. Silakan masukkan ID yang benar.\033[0m\n";
+                }
                 else
-                    cout << "ID Lapangan tidak valid. Silakan masukkan ID yang tersedia.\n";
+                {
+                    break;
+                }
             }
+
+            if (jadwal.idLapangan == 0)
+            {
+                break; // Jika batal, keluar dari case dan kembali ke menu utama
+            }
+
             cin.ignore(); // Membersihkan buffer input
 
             // Validasi Hari
             while (true)
             {
-                cout << "Masukkan Hari (contoh: Senin): ";
+                cout << "\nMasukkan Hari (contoh: Senin) : ";
                 getline(cin, jadwal.hari);
-                if (regex_match(jadwal.hari, regex("^[A-Za-z]+$"))) // Hanya huruf
-                    break;
-                else
-                    cout << "Input hari tidak valid. Masukkan hanya nama hari (contoh: Senin).\n";
+
+                if (regex_match(jadwal.hari, regex("^[A-Za-z]+$")))
+                {
+                    string hariLower = jadwal.hari;
+                    transform(hariLower.begin(), hariLower.end(), hariLower.begin(), ::tolower);
+                    if (hariLower == "senin" || hariLower == "selasa" || hariLower == "rabu" ||
+                        hariLower == "kamis" || hariLower == "jumat" || hariLower == "sabtu" || hariLower == "minggu")
+                    {
+                        // Valid
+                        break;
+                    }
+                }
+
+                cout << "\033[31mNama hari tidak valid. Silakan coba lagi.\033[0m\n";
             }
 
             // Validasi Tanggal
             while (true)
             {
-                cout << "Masukkan Tanggal (format DD-MM-YYYY): ";
+                cout << "\nMasukkan Tanggal (format DD-MM-YYYY) : ";
                 getline(cin, jadwal.tanggal);
-                if (regex_match(jadwal.tanggal, regex("^\\d{2}-\\d{2}-\\d{4}$"))) // Format tanggal
-                    break;
-                else
-                    cout << "Format tanggal tidak valid. Silakan masukkan sesuai format (DD-MM-YYYY).\n";
+
+                if (regex_match(jadwal.tanggal, regex("^\\d{2}-\\d{2}-\\d{4}$")))
+                {
+                    int dd, mm, yyyy;
+                    sscanf(jadwal.tanggal.c_str(), "%d-%d-%d", &dd, &mm, &yyyy);
+                    if (dd > 0 && dd <= 31 && mm > 0 && mm <= 12 && yyyy > 1900)
+                    {
+                        // Valid
+                        break;
+                    }
+                }
+
+                cout << "\033[31mFormat atau nilai tanggal tidak valid. Silakan coba lagi.\033[0m\n";
             }
 
-            // Validasi Jam Mulai
+            // Validasi Jam Mulai (Cek Tumpang Tindih)
             while (true)
             {
-                cout << "Masukkan Jam Mulai (format HH:MM): ";
+                cout << "\nMasukkan Jam Mulai (format HH:MM) : ";
                 getline(cin, jadwal.jamMulai);
-                if (regex_match(jadwal.jamMulai, regex("^\\d{2}:\\d{2}$"))) // Format jam
-                    break;
-                else
-                    cout << "Format jam tidak valid. Silakan masukkan sesuai format (HH:MM).\n";
+
+                if (regex_match(jadwal.jamMulai, regex("^\\d{2}:\\d{2}$")))
+                {
+                    int hhMulai, mmMulai;
+                    sscanf(jadwal.jamMulai.c_str(), "%d:%d", &hhMulai, &mmMulai);
+
+                    int waktuMulai = hhMulai * 60 + mmMulai;
+
+                    // Cek jika ada jadwal lain pada hari yang sama dan jam mulai yang tumpang tindih
+                    bool jadwalJamTersedia = false;
+                    for (const auto &j : jadwalList)
+                    {
+                        if (j.hari == jadwal.hari && j.tanggal == jadwal.tanggal) // Cek hari dan tanggal yang sama
+                        {
+                            int jWaktuMulai = 0, jWaktuSelesai = 0, hhSelesai, mmSelesai;
+                            sscanf(j.jamMulai.c_str(), "%d:%d", &hhMulai, &mmMulai);
+                            sscanf(j.jamSelesai.c_str(), "%d:%d", &hhSelesai, &mmSelesai);
+
+                            jWaktuMulai = hhMulai * 60 + mmMulai;
+                            jWaktuSelesai = hhSelesai * 60 + mmSelesai;
+
+                            // Cek apakah jadwal baru tumpang tindih dengan jadwal yang sudah ada
+                            if (waktuMulai < jWaktuSelesai && waktuMulai >= jWaktuMulai)
+                            {
+                                jadwalJamTersedia = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (jadwalJamTersedia)
+                    {
+                        cout << "\033[31mJam mulai yang Anda masukkan sudah tersedia dengan jadwal yang sudah ada. Silakan masukkan waktu yang berbeda.\033[0m\n";
+                        continue; // Minta jam mulai baru
+                    }
+                    else
+                    {
+                        // Valid jam mulai, keluar dari loop
+                        break;
+                    }
+                }
+
+                cout << "\033[31mFormat atau nilai jam mulai tidak valid. Silakan coba lagi.\033[0m\n";
             }
 
-            // Validasi Jam Selesai
+            // Validasi Jam Selesai (Cek Tumpang Tindih dengan Jam Mulai)
             while (true)
             {
-                cout << "Masukkan Jam Selesai (format HH:MM): ";
+                cout << "\nMasukkan Jam Selesai (format HH:MM) : ";
                 getline(cin, jadwal.jamSelesai);
+
                 if (regex_match(jadwal.jamSelesai, regex("^\\d{2}:\\d{2}$")))
                 {
-                    if (jadwal.jamSelesai > jadwal.jamMulai)
+                    int hhMulai, mmMulai, hhSelesai, mmSelesai;
+                    sscanf(jadwal.jamMulai.c_str(), "%d:%d", &hhMulai, &mmMulai);
+                    sscanf(jadwal.jamSelesai.c_str(), "%d:%d", &hhSelesai, &mmSelesai);
+
+                    int waktuMulai = hhMulai * 60 + mmMulai;
+                    int waktuSelesai = hhSelesai * 60 + mmSelesai;
+
+                    if (waktuSelesai > waktuMulai)
+                    {
+                        // Valid jam selesai, keluar dari loop
                         break;
+                    }
                     else
-                        cout << "Jam Selesai harus lebih besar dari Jam Mulai. Silakan masukkan ulang.\n";
+                    {
+                        cout << "\033[31mJam selesai harus lebih besar dari jam mulai. Silakan coba lagi.\033[0m\n";
+                    }
                 }
                 else
-                    cout << "Format jam tidak valid. Silakan masukkan sesuai format (HH:MM).\n";
+                {
+                    cout << "\033[31mFormat atau nilai jam selesai tidak valid. Silakan coba lagi.\033[0m\n";
+                }
             }
 
             // Set status awal sebagai "Tersedia"
@@ -664,14 +947,30 @@ void crudJadwal()
 
             // Simpan ke file
             simpanJadwal();
-            cout << "Jadwal berhasil ditambahkan.\n";
+            cout << "\033[32\nmJadwal berhasil ditambahkan.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
+
             break;
         }
 
         case 2:
         { // Tampilkan Jadwal
-            cout << "\nDaftar Jadwal:\n";
-            tampilkanJadwal();
+            if (jadwalList.empty())
+            {
+                cout << "\nTidak ada data lapangan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
+            }
+            else
+            {
+                tampilkanJadwal(); // Menampilkan semua lapangan yang ada
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
+            }
             break;
         }
 
@@ -680,26 +979,44 @@ void crudJadwal()
             // Hapus Jadwal
             if (jadwalList.empty())
             {
-                cout << "Tidak ada jadwal yang tersedia untuk dihapus.\n";
+                cout << "\nTidak ada data jadwal.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
+            else
+            {
+                tampilkanJadwal(); // Menampilkan semua lapangan yang ada
+            }
 
-            tampilkanJadwal(); // Tampilkan daftar jadwal
             int index;
-
             // Loop untuk validasi input ID jadwal
             while (true)
             {
-                cout << "Masukkan nomor data yang ingin dihapus: ";
+                cout << "Masukkan nomor data yang ingin dihapus (0 untuk batal): ";
                 cin >> index;
+
+                if (cin.fail())
+                {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\033[31mInput tidak valid. Masukkan angka ID.\033[0m\n";
+                    continue;
+                }
+
+                if (index == 0)
+                {
+                    cout << "Kembali ke menu Kelola Lapangan.\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    break; // Kembali ke menu Kelola Lapangan
+                }
 
                 // Validasi apakah ID jadwal ada
                 if (index >= 1 && index <= static_cast<int>(jadwalList.size()))
                 {
                     // Tampilkan detail jadwal yang akan dihapus
-                    cout << "Anda yakin ingin menghapus jadwal berikut?\n";
-                    cout << "Hari: " << jadwalList[index - 1].hari << "\n";
-                    cout << "Konfirmasi (y/n): ";
+                    cout << "\033[1;33m\nYakin ingin menghapus? (y/n):\033[0m";
                     char konfirmasi;
                     cin >> konfirmasi;
 
@@ -708,18 +1025,26 @@ void crudJadwal()
                         // Jika konfirmasi ya, hapus data
                         jadwalList.erase(jadwalList.begin() + index - 1);
                         perbaruiIDJadwal(); // Perbarui ID agar tetap berurutan
-                        cout << "Data berhasil dihapus.\n";
+                        cout << "\033[32m\nData berhasil dihapus.\033[0m\n";
+                        this_thread::sleep_for(chrono::seconds(1));
+                        break;
+                    }
+                    else if (konfirmasi == 'n' || konfirmasi == 'N')
+                    {
+                        // Jika konfirmasi tidak, pembatalan
+                        cout << "Hapus jadwal dibatalkan.\n";
+                        this_thread::sleep_for(chrono::seconds(1));
+                        break; // Keluar dari loop jika user memilih tidak
                     }
                     else
                     {
-                        // Jika konfirmasi tidak, pembatalan
-                        cout << "Penghapusan dibatalkan.\n";
+                        // Jika input tidak valid
+                        cout << "\033[31mInput tidak valid! Harap masukkan 'y' untuk Ya atau 'n' untuk Tidak.\033[0m\n";
                     }
-                    break; // Keluar dari loop setelah valid atau batal
                 }
                 else
                 {
-                    cout << "Nomor jadwal tidak ditemukan. Silakan masukkan nomor yang benar.\n";
+                    cout << "\033[31mNomor jadwal tidak ditemukan. Silakan masukkan nomor yang benar.\033[0m\n";
                 }
             }
 
@@ -727,123 +1052,269 @@ void crudJadwal()
         }
 
         case 4:
-        { // Edit Jadwal
-            tampilkanJadwal();
-            int id;
-            cout << "ID Jadwal yang ingin diedit: ";
-            cin >> id;
-
-            bool found = false;
-            for (size_t i = 0; i < jadwalList.size(); ++i)
+        {
+            if (jadwalList.empty())
             {
-                if (jadwalList[i].id == id)
+                cout << "\nTidak ada data jadwal.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
+            }
+            else
+            {
+                tampilkanJadwal(); // Menampilkan semua lapangan yang ada
+            }
+
+            int id;
+            bool found = false;
+
+            // Looping untuk memasukkan ID Jadwal yang ingin diedit
+            while (true)
+            {
+                cout << "\nMasukkan ID Jadwal yang ingin diedit (0 untuk batal): ";
+                cin >> id;
+
+                // Validasi input ID
+                if (cin.fail())
                 {
-                    // Jika jadwal sudah dipesan, tidak bisa diedit
-                    if (jadwalList[i].status == "Sudah Dipesan")
-                    {
-                        cout << "Jadwal ini sudah dipesan dan tidak bisa diedit.\n";
-                        found = true;
-                        break;
-                    }
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "\033[31mInput tidak valid. Masukkan angka ID.\033[0m\n";
+                    continue; // Kembali ke penginputan ID jika gagal
+                }
 
-                    // Validasi hari baru
-                    cout << "Hari Baru (" << jadwalList[i].hari << "): ";
-                    cin.ignore();
-                    getline(cin, jadwalList[i].hari);
+                // Jika ID 0, batalkan dan kembali ke menu
+                if (id == 0)
+                {
+                    cout << "Kembali ke menu Kelola Jadwal.\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                    break; // Kembali ke menu Kelola Jadwal
+                }
 
-                    // Validasi tanggal baru
-                    while (true)
+                // Mencari jadwal berdasarkan ID
+                for (size_t i = 0; i < jadwalList.size(); ++i)
+                {
+                    if (jadwalList[i].id == id)
                     {
-                        cout << "Tanggal Baru (format DD-MM-YYYY, " << jadwalList[i].tanggal << "): ";
-                        string tanggalBaru;
-                        getline(cin, tanggalBaru);
-                        if (regex_match(tanggalBaru, regex("\\d{2}-\\d{2}-\\d{4}")))
+                        // Cek apakah jadwal sudah dipesan
+                        if (jadwalList[i].status == "Sudah Dipesan")
                         {
-                            jadwalList[i].tanggal = tanggalBaru;
-                            break;
+                            cout << "\033[31mJadwal ini sudah dipesan dan tidak bisa diedit.\033[0m\n";
+                            this_thread::sleep_for(chrono::seconds(2));
+                            found = true;
+                            break; // Keluar jika jadwal sudah dipesan
                         }
-                        else
-                        {
-                            cout << "Format tanggal tidak valid. Silakan masukkan lagi.\n";
-                        }
-                    }
 
-                    // Validasi jam mulai baru
-                    while (true)
-                    {
-                        cout << "Jam Mulai Baru (format HH:MM, " << jadwalList[i].jamMulai << "): ";
-                        string jamMulaiBaru;
-                        getline(cin, jamMulaiBaru);
-                        if (regex_match(jamMulaiBaru, regex("\\d{2}:\\d{2}")))
+                        // Proses pengeditan jadwal
+                        cin.ignore();
+                        while (true)
                         {
-                            jadwalList[i].jamMulai = jamMulaiBaru;
-                            break;
-                        }
-                        else
-                        {
-                            cout << "Format jam tidak valid. Silakan masukkan lagi.\n";
-                        }
-                    }
+                            // Edit Hari
+                            cout << "\nHari Baru (" << jadwalList[i].hari << "): ";
+                            string hariBaru;
+                            getline(cin, hariBaru);
 
-                    // Validasi jam selesai baru
-                    while (true)
-                    {
-                        cout << "Jam Selesai Baru (format HH:MM, " << jadwalList[i].jamSelesai << "): ";
-                        string jamSelesaiBaru;
-                        getline(cin, jamSelesaiBaru);
-                        if (regex_match(jamSelesaiBaru, regex("\\d{2}:\\d{2}")))
-                        {
-                            if (jamSelesaiBaru > jadwalList[i].jamMulai)
+                            // Hapus spasi ekstra dari input
+
+                            // Jika input kosong, langsung lanjutkan loop tanpa menampilkan pesan error
+                            if (hariBaru.empty())
                             {
-                                jadwalList[i].jamSelesai = jamSelesaiBaru;
+                                cout << "\033[31mInput tidak boleh kosong.\033[0m\n"; // Menampilkan pesan jika kosong
+                                continue;                                             // Minta input ulang
+                            }
+
+                            // Convert input menjadi lowercase untuk memudahkan perbandingan
+                            string hariLower = hariBaru;
+                            transform(hariLower.begin(), hariLower.end(), hariLower.begin(), ::tolower);
+
+                            // Periksa apakah hari tersebut valid
+                            if (hariLower == "senin" || hariLower == "selasa" || hariLower == "rabu" ||
+                                hariLower == "kamis" || hariLower == "jumat" || hariLower == "sabtu" || hariLower == "minggu")
+                            {
+                                // Jika valid, set hari baru
+                                jadwalList[i].hari = hariBaru;
+                                break; // Keluar dari loop setelah berhasil
+                            }
+                            else
+                            {
+                                // Tampilkan pesan hanya jika input tidak valid
+                                cout << "\033[31mNama hari tidak valid. Silakan coba lagi.\033[0m\n";
+                            }
+                        }
+
+                        // Edit Tanggal
+                        while (true)
+                        {
+                            cout << "\nTanggal Baru (format DD-MM-YYYY, " << jadwalList[i].tanggal << "): ";
+                            string tanggalBaru;
+                            getline(cin, tanggalBaru);
+
+                            if (regex_match(tanggalBaru, regex("^\\d{2}-\\d{2}-\\d{4}$")))
+                            {
+                                int dd, mm, yyyy;
+                                sscanf(tanggalBaru.c_str(), "%d-%d-%d", &dd, &mm, &yyyy);
+                                if (dd > 0 && dd <= 31 && mm > 0 && mm <= 12 && yyyy > 1900)
+                                {
+                                    jadwalList[i].tanggal = tanggalBaru;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                cout << "\033[31mFormat atau nilai tanggal tidak valid. Silakan coba lagi.\033[0m\n";
+                            }
+                        }
+
+                        // Edit Jam Mulai
+                        while (true)
+                        {
+                            cout << "\nJam Mulai Baru (format HH:MM, " << jadwalList[i].jamMulai << "): ";
+                            string jamMulaiBaru;
+                            getline(cin, jamMulaiBaru);
+
+                            if (regex_match(jamMulaiBaru, regex("\\d{2}:\\d{2}")))
+                            {
+                                bool jamTersedia = true;
+                                for (const auto &jadwal : jadwalList)
+                                {
+                                    if (jadwal.id != jadwalList[i].id && jadwal.hari == jadwalList[i].hari && jadwal.tanggal == jadwalList[i].tanggal)
+                                    {
+                                        int hhMulai, mmMulai, hhSelesai, mmSelesai;
+                                        sscanf(jamMulaiBaru.c_str(), "%d:%d", &hhMulai, &mmMulai);
+                                        int waktuMulai = hhMulai * 60 + mmMulai;
+
+                                        int jhhMulai, jmmMulai, jhhSelesai, jmmSelesai;
+                                        sscanf(jadwal.jamMulai.c_str(), "%d:%d", &jhhMulai, &jmmMulai);
+                                        sscanf(jadwal.jamSelesai.c_str(), "%d:%d", &jhhSelesai, &jmmSelesai);
+
+                                        int jWaktuMulai = jhhMulai * 60 + jmmMulai;
+                                        int jWaktuSelesai = jhhSelesai * 60 + jmmSelesai;
+
+                                        // Cek apakah jam mulai baru bertabrakan dengan jam yang sudah ada
+                                        if ((waktuMulai >= jWaktuMulai && waktuMulai < jWaktuSelesai) || (waktuMulai < jWaktuMulai && waktuMulai >= jWaktuMulai))
+                                        {
+                                            jamTersedia = false;
+                                            break; // Jika ada jadwal yang bertabrakan
+                                        }
+                                    }
+                                }
+
+                                if (!jamTersedia)
+                                {
+                                    cout << "\033[31mJam mulai yang Anda masukkan sudah tersedia dengan jadwal yang sudah ada. Silakan masukkan waktu yang berbeda.\033[0m\n";
+                                }
+                                else
+                                {
+                                    jadwalList[i].jamMulai = jamMulaiBaru;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                cout << "\033[31mFormat jam tidak valid. Silakan masukkan sesuai format (HH:MM).\033[0m\n";
+                            }
+                        }
+
+                        // Validasi jam selesai baru
+                        while (true)
+                        {
+                            cout << "\nJam Selesai Baru (format HH:MM, " << jadwalList[i].jamSelesai << "): ";
+                            string jamSelesaiBaru;
+                            getline(cin, jamSelesaiBaru);
+
+                            if (regex_match(jamSelesaiBaru, regex("\\d{2}:\\d{2}")))
+                            {
+                                if (jamSelesaiBaru > jadwalList[i].jamMulai)
+                                {
+                                    bool jamTersedia = true;
+                                    for (const auto &jadwal : jadwalList)
+                                    {
+                                        if (jadwal.id != jadwalList[i].id && jadwal.hari == jadwalList[i].hari && jadwal.tanggal == jadwalList[i].tanggal)
+                                        {
+                                            int hhMulai, mmMulai, hhSelesai, mmSelesai;
+                                            sscanf(jamSelesaiBaru.c_str(), "%d:%d", &hhMulai, &mmMulai);
+                                            int waktuSelesai = hhMulai * 60 + mmMulai;
+
+                                            int jhhMulai, jmmMulai, jhhSelesai, jmmSelesai;
+                                            sscanf(jadwal.jamMulai.c_str(), "%d:%d", &jhhMulai, &jmmMulai);
+                                            sscanf(jadwal.jamSelesai.c_str(), "%d:%d", &jhhSelesai, &jmmSelesai);
+
+                                            int jWaktuMulai = jhhMulai * 60 + jmmMulai;
+                                            int jWaktuSelesai = jhhSelesai * 60 + jmmSelesai;
+
+                                            // Cek apakah jam selesai baru bertabrakan dengan jadwal lain
+                                            if ((waktuSelesai >= jWaktuMulai && waktuSelesai < jWaktuSelesai) || (waktuSelesai <= jWaktuSelesai && waktuSelesai > jWaktuMulai))
+                                            {
+                                                jamTersedia = false;
+                                                break; // Jika ada jadwal yang bertabrakan
+                                            }
+                                        }
+                                    }
+
+                                    if (!jamTersedia)
+                                    {
+                                        cout << "\033[31mJam selesai yang Anda masukkan sudah tersedia dengan jadwal yang sudah ada. Silakan masukkan waktu yang berbeda.\033[0m\n";
+                                    }
+                                    else
+                                    {
+                                        jadwalList[i].jamSelesai = jamSelesaiBaru;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    cout << "\033[31mJam Selesai harus lebih besar dari Jam Mulai. Silakan masukkan ulang.\033[0m\n";
+                                }
+                            }
+                            else
+                            {
+                                cout << "\033[31mFormat jam tidak valid. Silakan masukkan sesuai format (HH:MM).\033[0m\n";
+                            }
+                        }
+
+                        // Edit Status
+                        while (true)
+                        {
+                            cout << "\nStatus Baru (" << jadwalList[i].status << ") [Tersedia/Sudah Dipesan]: ";
+                            string statusBaru;
+                            getline(cin, statusBaru);
+
+                            if (statusBaru == "Tersedia" || statusBaru == "Sudah Dipesan")
+                            {
+                                jadwalList[i].status = statusBaru;
                                 break;
                             }
                             else
                             {
-                                cout << "Jam Selesai harus lebih besar dari Jam Mulai. Silakan masukkan lagi.\n";
+                                cout << "\033[31mInput tidak valid. Masukkan 'Tersedia' atau 'Sudah Dipesan'.\033[0m\n";
                             }
                         }
-                        else
-                        {
-                            cout << "Format jam tidak valid. Silakan masukkan lagi.\n";
-                        }
-                    }
 
-                    // Validasi status baru
-                    while (true)
-                    {
-                        cout << "Status Baru (" << jadwalList[i].status << ") [Tersedia/Sudah Dipesan]: ";
-                        string statusBaru;
-                        getline(cin, statusBaru);
-                        if (statusBaru == "Tersedia" || statusBaru == "Sudah Dipesan")
-                        {
-                            jadwalList[i].status = statusBaru;
-                            break;
-                        }
-                        else
-                        {
-                            cout << "Input tidak valid. Masukkan 'Tersedia' atau 'Sudah Dipesan'.\n";
-                        }
-                    }
+                        found = true;
+                        simpanJadwal();
+                        cout << "\033[1;32m\nJadwal berhasil diedit.\033[0m\n";
+                        this_thread::sleep_for(chrono::seconds(2));
 
-                    cout << "Jadwal berhasil diedit.\n";
-                    found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    cout << "\033[31mJadwal dengan ID tersebut tidak ditemukan. Silakan coba lagi.\033[0m\n";
+                }
+                else
+                {
                     break;
                 }
             }
-
-            if (!found)
-            {
-                cout << "Jadwal dengan ID tersebut tidak ditemukan.\n";
-            }
             break;
         }
-
         case 5: // Kembali
-            cout << "Kembali ke menu utama.\n";
+            cout << "\nKembali ke menu utama.\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
         }
     } while (pilihan != 5);
 }
@@ -922,13 +1393,8 @@ void perbaruiIDSnack()
 
 void tampilkanSnack()
 {
-
-    if (snackList.empty())
-    {
-        cout << "Belum ada data snack yang tersedia." << endl;
-        return;
-    }
     // Header
+    cout << endl;
     cout << left << setw(5) << "ID"
          << setw(20) << "Nama"
          << setw(15) << "Harga" << endl;
@@ -949,6 +1415,7 @@ void crudSnack()
 
     do
     {
+        clearScreen();
         cout << "\n===== KELOLA SNACK =====\n";
         cout << "1. Tambah Snack\n";
         cout << "2. Tampilkan Snack\n";
@@ -958,45 +1425,127 @@ void crudSnack()
         cout << "Pilih: ";
         cin >> pilihan;
 
+        if (cin.fail() || pilihan < 1 || pilihan > 5)
+        {
+            cin.clear();                                         // Membersihkan flag error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan buffer
+            cout << "\033[31m\nPilihan tidak valid. Masukkan angka antara 1 hingga 5.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
+            continue; // Kembali ke awal loop
+        }
         switch (pilihan)
         {
         case 1:
         { // Tambah Snack
             Snack snack;
-            snack.id = snackList.size() + 1; // ID otomatis berdasarkan ukuran list
-            cout << "Nama Snack: ";
-            cin.ignore();
-            getline(cin, snack.nama);
-            cout << "Harga Snack: ";
-            cin >> snack.harga;
+            snack.id = snackList.empty() ? 1 : snackList.back().id + 1; // ID otomatis berdasarkan ID terakhir
 
+            // Validasi Nama Snack
+            cin.ignore(); // Membersihkan buffer input sebelum loop
+            while (true)
+            {
+                cout << "\nMasukkan nama Snack (0 untuk batal): ";
+                getline(cin, snack.nama);
+
+                // Cek apakah pengguna ingin membatalkan
+                if (snack.nama == "0")
+                {
+                    cout << "\nKembali ke menu Kelola Snack.\n";
+                    this_thread::sleep_for(chrono::seconds(1));
+                    break; // Keluar dari case
+                }
+
+                // Validasi input kosong atau hanya spasi
+                if (snack.nama.empty() || snack.nama.find_first_not_of(" \t") == string::npos)
+                {
+                    cout << "\033[31mNama Snack tidak boleh kosong atau hanya spasi!\033[0m\n";
+                    continue;
+                }
+
+                // Validasi nama duplikat
+                bool duplikat = false;
+                for (const auto &s : snackList)
+                {
+                    if (s.nama == snack.nama)
+                    {
+                        cout << "\033[31mNama Snack sudah ada, gunakan nama lain!\033[0m\n";
+                        duplikat = true;
+                        break;
+                    }
+                }
+
+                if (!duplikat)
+                    break; // Keluar dari loop jika valid
+            }
+
+            if (snack.nama == "0")
+            {
+                break;
+            }
+
+            // Validasi Harga Snack
+            while (true)
+            {
+                cout << "\nHarga Snack: ";
+                cin >> snack.harga;
+
+                if (cin.fail() || snack.harga <= 0) // Harga harus angka positif
+                {
+                    cin.clear();                                         // Membersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan input buffer
+                    cout << "\033[31mHarga tidak valid. Masukkan angka positif.\033[0m\n";
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // Tambahkan snack ke daftar
             snackList.push_back(snack);
+
+            // Simpan data snack ke file
             simpanSnack();
-            cout << "Snack berhasil ditambahkan.\n";
+            cout << "\033[32m\nSnack berhasil ditambahkan.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
         }
+
         case 2:
         { // Tampilkan Snack
-            cout << "\nDaftar Snack:\n";
+
             if (snackList.empty())
             {
-                cout << "Tidak ada snack.\n";
+                cout << "\nTidak ada data snack.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
             }
             else
             {
-                tampilkanSnack();
+                tampilkanSnack(); // Menampilkan semua lapangan yang ada
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
             }
             break;
         }
         case 3:
         { // Hapus Snack
-            if (snackList.empty())
+            if (jadwalList.empty())
             {
-                cout << "Tidak ada snack untuk dihapus.\n";
+                cout << "\nTidak ada data lapangan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
-
-            tampilkanSnack(); // Tampilkan daftar snack
+            else
+            {
+                tampilkanSnack(); // Menampilkan semua lapangan yang ada
+            }
 
             int id;
             bool found = false;
@@ -1004,57 +1553,99 @@ void crudSnack()
             // Loop untuk memastikan pengguna memasukkan ID yang valid
             while (true)
             {
-                cout << "Masukkan ID Snack yang ingin dihapus: ";
+                cout << "\nMasukkan ID Snack yang ingin dihapus: (0 untuk batal) ";
                 cin >> id;
 
+                // Validasi jika input bukan angka
+                if (cin.fail())
+                {
+                    cin.clear();                                         // Membersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Bersihkan input buffer
+                    cout << "\033[31mInput tidak valid. Masukkan ID berupa angka.\033[0m\n";
+                    continue;
+                }
+
+                if (id == 0)
+                {
+                    cout << "Kembali ke menu Kelola Snack.\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    break; // Kembali ke menu Kelola Lapangan
+                }
+
+                // Cari snack berdasarkan ID
                 for (size_t i = 0; i < snackList.size(); ++i)
                 {
                     if (snackList[i].id == id)
                     {
-                        // Tampilkan detail snack yang akan dihapus
-                        cout << "Anda yakin ingin menghapus snack \"" << snackList[i].nama
-                             << "\" dengan harga " << snackList[i].harga << "? (y/n): ";
-                        char konfirmasi;
-                        cin >> konfirmasi;
-
-                        if (konfirmasi == 'y' || konfirmasi == 'Y')
-                        {
-                            snackList.erase(snackList.begin() + i); // Hapus snack
-                            perbaruiIDSnack();                      // Perbarui ID agar tetap berurutan
-                            cout << "Snack berhasil dihapus.\n";
-                        }
-                        else
-                        {
-                            cout << "Penghapusan dibatalkan.\n";
-                        }
-
                         found = true;
-                        break;
+
+                        // Tampilkan detail snack yang akan dihapus
+                        cout << "\033[33m\nAnda yakin ingin menghapus? (y/n): \033[0m";
+                        char konfirmasi;
+                        while (true)
+                        {
+                            cin >> konfirmasi;
+
+                            // Validasi input konfirmasi
+                            if (konfirmasi == 'y' || konfirmasi == 'Y')
+                            {
+                                snackList.erase(snackList.begin() + i); // Hapus snack
+                                perbaruiIDSnack();                      // Perbarui ID agar tetap berurutan
+                                cout << "\033[32m\nSnack berhasil dihapus.\033[0m\n";
+                                this_thread::sleep_for(chrono::seconds(2));
+                                break; // Keluar dari loop setelah penghapusan
+                            }
+                            else if (konfirmasi == 'n' || konfirmasi == 'N')
+                            {
+                                cout << "Hapus snack dibatalkan.\n";
+                                this_thread::sleep_for(chrono::seconds(2));
+                                break; // Keluar dari loop jika penghapusan dibatalkan
+                            }
+                            else
+                            {
+                                // Jika input tidak valid, minta konfirmasi ulang
+                                cout << "\033[31mInput tidak valid. Harap masukkan 'y' untuk ya atau 'n' untuk tidak: \033[0m";
+                            }
+                        }
+
+                        break; // Keluar dari loop utama setelah pencarian
                     }
                 }
 
+                // Jika ID ditemukan, keluar dari loop
                 if (found)
                 {
-                    break; // Keluar dari loop jika ID valid ditemukan
+                    break;
                 }
                 else
                 {
-                    cout << "Snack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\n";
+                    cout << "\033[31mSnack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\033[0m\n";
                 }
+            }
+
+            if (id == 0)
+            {
+                break;
             }
 
             break;
         }
 
         case 4:
-        { // Edit Snack
-            if (snackList.empty())
+        {
+            // Edit Snack
+            if (jadwalList.empty())
             {
-                cout << "Tidak ada snack untuk diedit.\n";
+                cout << "\nTidak ada data lapangan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
-
-            tampilkanSnack();
+            else
+            {
+                tampilkanSnack(); // Menampilkan semua lapangan yang ada
+            }
 
             int id;
             bool found = false;
@@ -1062,51 +1653,109 @@ void crudSnack()
             // Loop untuk memastikan pengguna memasukkan ID yang valid
             while (true)
             {
-                cout << "Masukkan ID Snack yang ingin diedit: ";
+                cout << "\nMasukkan ID Snack yang ingin diedit: ";
                 cin >> id;
 
+                // Validasi input ID agar hanya menerima angka
+                if (cin.fail())
+                {
+                    cin.clear();                                         // Bersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Bersihkan buffer input
+                    cout << "\033[31mInput tidak valid. Masukkan ID berupa angka.\033[0m\n";
+                    continue;
+                }
+
+                if (id == 0)
+                {
+                    cout << "Kembali ke menu Kelola Snack.\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    break;
+                }
+
+                // Cari ID Snack dalam daftar
                 for (size_t i = 0; i < snackList.size(); ++i)
                 {
                     if (snackList[i].id == id)
                     {
-                        // Edit nama snack
-                        cout << "Nama Snack Baru (" << snackList[i].nama << "): ";
-                        cin.ignore();
-                        getline(cin, snackList[i].nama);
+                        found = true;
 
-                        // Edit harga snack
-                        cout << "Harga Snack Baru (" << snackList[i].harga << "): ";
-                        while (!(cin >> snackList[i].harga) || snackList[i].harga <= 0)
+                        // Edit nama snack
+                        string namaBaru;
+                        while (true) // Meminta input nama snack hingga valid
                         {
-                            cin.clear();
-                            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                            cout << "Harga tidak valid. Masukkan harga yang benar: ";
+                            cout << "\nNama Snack Baru (" << snackList[i].nama << "): ";
+                            cin.ignore(); // Bersihkan buffer sebelum menerima input string
+                            getline(cin, namaBaru);
+
+                            // Validasi nama snack baru
+                            if (!regex_match(namaBaru, regex("^[A-Za-z0-9 ]+$")))
+                            {
+                                cout << "\033[31mNama snack tidak valid. Hanya huruf, angka, dan spasi yang diperbolehkan.\033[0m\n";
+                                continue;
+                            }
+
+                            // Cek duplikat nama snack
+                            bool duplikat = false;
+                            for (size_t j = 0; j < snackList.size(); ++j)
+                            {
+                                if (snackList[j].nama == namaBaru && snackList[j].id != snackList[i].id)
+                                {
+                                    duplikat = true;
+                                    break;
+                                }
+                            }
+
+                            if (duplikat)
+                            {
+                                cout << "\033[31mNama snack sudah ada dalam daftar. Silakan masukkan nama yang berbeda.\033[0m\n";
+                                continue;
+                            }
+
+                            // Jika nama tidak duplikat, keluar dari loop input nama
+                            snackList[i].nama = namaBaru;
+                            break;
                         }
 
-                        cout << "Snack berhasil diedit.\n";
-                        found = true;
+                        // Edit harga snack
+                        cout << "\nHarga Snack Baru (" << snackList[i].harga << "): ";
+                        double hargaBaru;
+                        while (!(cin >> hargaBaru) || hargaBaru <= 0)
+                        {
+                            cin.clear();                                         // Bersihkan error flag
+                            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Bersihkan buffer input
+                            cout << "\033[31mHarga tidak valid. Masukkan harga berupa angka positif: \033[0m";
+                        }
+                        snackList[i].harga = hargaBaru;
+
+                        simpanSnack();
+                        cout << "\033[32m\nSnack berhasil diedit.\033[0m\n";
+                        this_thread::sleep_for(chrono::seconds(2));
                         break;
                     }
                 }
 
-                if (found)
+                if (!found)
                 {
-                    break; // Keluar dari loop jika ID valid ditemukan
+                    cout << "\033[31mSnack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\033[0m\n";
                 }
                 else
                 {
-                    cout << "Snack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\n";
+                    break; // Keluar dari loop jika ID valid ditemukan dan snack berhasil diedit
                 }
+            }
+
+            if (id == 0)
+            {
+                break;
             }
 
             break;
         }
 
         case 5: // Kembali
-            cout << "Kembali ke menu utama.\n";
+            cout << "\nKembali ke menu utama.\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
         }
     } while (pilihan != 5);
 }
@@ -1163,12 +1812,7 @@ void simpanSnack()
 
 void tampilkanPesanan()
 {
-
-    if (pesananList.empty())
-    {
-        cout << "Belum ada data pesanan yang tersedia." << endl;
-        return;
-    }
+    cout << endl;
     // Menampilkan header tabel
     cout << left << setw(5) << "No"
          << setw(12) << "Pesanan ID"
@@ -1208,7 +1852,7 @@ void crudPemesanan()
     int pilihan;
     do
     {
-
+        clearScreen();
         cout << "\n===== KELOLA PEMESANAN =====\n";
         cout << "1. Tampilkan Semua Pesanan\n";
         cout << "2. Proses Pembayaran\n";
@@ -1217,32 +1861,42 @@ void crudPemesanan()
         cout << "Pilih: ";
         cin >> pilihan;
 
+        if (cin.fail() || pilihan < 1 || pilihan > 4)
+        {
+            cin.clear();                                         // Membersihkan flag error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Membersihkan buffer
+            cout << "\033[31m\nPilihan tidak valid. Masukkan angka antara 1 hingga 5.\033[0m\n";
+            this_thread::sleep_for(chrono::seconds(2));
+            continue; // Kembali ke awal loop
+        }
+
         switch (pilihan)
         {
         case 1:
         { // Tampilkan Semua Pesanan
             cout << "\nDaftar Pesanan:\n";
-            if (pesananList.empty())
-            {
-                cout << "Tidak ada pesanan.\n";
-            }
-            else
-            {
-                tampilkanPesanan();
-            }
+
+            tampilkanPesanan();
+            cout << "\nTekan Enter untuk kembali ke menu...";
+            cin.ignore(); // Membersihkan buffer input
+            cin.get();    // Menunggu pengguna menekan Enter
             break;
         }
         case 2:
         { // Proses Pembayaran
             if (pesananList.empty())
             {
-                cout << "\n===== Daftar Pesanan =====\n";
-                cout << "Tidak ada pesanan yang tersedia.\n";
+                cout << "\nTidak ada data pemesanan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
                 break;
             }
-
-            // Menampilkan daftar pesanan yang ada
-            tampilkanPesanan();
+            else
+            {
+                tampilkanPesanan(); // Menampilkan semua lapangan yang ada
+                break;
+            }
 
             int idPesanan;
             bool valid = false;
@@ -1250,8 +1904,23 @@ void crudPemesanan()
             // Loop untuk memastikan input ID yang benar
             while (true)
             {
-                cout << "Masukkan ID Pesanan yang akan diproses pembayaran: ";
+                cout << "\nMasukkan ID Pesanan yang akan diproses pembayaran: ";
                 cin >> idPesanan;
+
+                // Validasi input ID (hanya angka positif)
+                if (cin.fail())
+                {
+                    cin.clear();                                         // Bersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Bersihkan buffer input
+                    cout << "\033[31mInput tidak valid. Masukkan ID berupa angka.\033[0m\n";
+                    continue;
+                }
+
+                if (idPesanan == 0)
+                {
+                    cout << "\nKembali ke menu Kelola Pemesanan.\n";
+                    break;
+                }
 
                 // Validasi apakah ID pesanan ada
                 if (idPesanan > 0 && idPesanan <= static_cast<int>(pesananList.size()))
@@ -1260,12 +1929,24 @@ void crudPemesanan()
 
                     if (pesanan.statusPembayaran)
                     {
-                        cout << "Pesanan sudah dibayar.\n";
+                        cout << "\033[33mPesanan dengan ID " << idPesanan << " sudah dibayar.\033[0m\n";
                     }
                     else
                     {
-                        pesanan.statusPembayaran = true;
-                        cout << "Pembayaran untuk pesanan ID " << idPesanan << " berhasil diproses.\n";
+                        // Konfirmasi sebelum memproses pembayaran
+                        cout << "\033[33mApakah Anda yakin ingin memproses pembayaran untuk pesanan ID " << idPesanan << "? (y/n): \033[0m";
+                        char konfirmasi;
+                        cin >> konfirmasi;
+
+                        if (konfirmasi == 'y' || konfirmasi == 'Y')
+                        {
+                            pesanan.statusPembayaran = true;
+                            cout << "\033[32mPembayaran untuk pesanan ID " << idPesanan << " berhasil diproses.\033[0m";
+                        }
+                        else
+                        {
+                            cout << "Pembayaran dibatalkan.\n";
+                        }
                     }
 
                     valid = true; // Menandai bahwa ID valid telah diproses
@@ -1273,7 +1954,7 @@ void crudPemesanan()
                 }
                 else
                 {
-                    cout << "Pesanan tidak ditemukan. Silakan coba lagi.\n";
+                    cout << "\033[31mPesanan dengan ID tersebut tidak ditemukan. Silakan coba lagi.\033[0m";
                 }
             }
 
@@ -1289,41 +1970,89 @@ void crudPemesanan()
         { // Batalkan Pesanan
             if (pesananList.empty())
             {
-                cout << "Tidak ada pesanan yang tersedia untuk dibatalkan.\n";
+                cout << "\nTidak ada data pemesanan.\n";
+                cout << "\nTekan Enter untuk kembali ke menu...";
+                cin.ignore();
+                cin.get();
+                break;
+            }
+            else
+            {
+                tampilkanPesanan(); // Menampilkan semua lapangan yang ada
                 break;
             }
 
-            tampilkanPesanan(); // Tampilkan daftar pesanan
             int idPesanan;
             bool valid = false;
 
             // Loop untuk memastikan input ID yang valid
             while (true)
             {
-                cout << "Masukkan ID Pesanan yang akan dibatalkan: ";
+                cout << "\nMasukkan ID Pesanan yang akan dibatalkan: ";
                 cin >> idPesanan;
 
-                if (idPesanan > 0 && idPesanan <= pesananList.size())
+                // Validasi input ID (hanya angka positif)
+                if (cin.fail())
                 {
-                    pesananList.erase(pesananList.begin() + idPesanan - 1); // Batalkan pesanan
-                    cout << "Pesanan ID " << idPesanan << " berhasil dibatalkan.\n";
-                    valid = true; // Menandakan ID yang valid telah diproses
+                    cin.clear();                                         // Bersihkan error flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Bersihkan buffer input
+                    cout << "\033[31mInput tidak valid. Masukkan ID berupa angka.\033[0m\n";
+                    continue;
+                }
+
+                if (idPesanan == 0)
+                {
+                    cout << "Kembali ke menu Kelola pesanan.\n";
+                    this_thread::sleep_for(chrono::seconds(2));
+                    break;
+                }
+
+                // Validasi apakah ID pesanan ada
+                if (idPesanan > 0 && idPesanan <= static_cast<int>(pesananList.size()))
+                {
+                    Pesanan &pesanan = pesananList[idPesanan - 1]; // Referensi ke pesanan yang dipilih
+
+                    // Konfirmasi sebelum pembatalan pesanan
+                    char konfirmasi;
+                    while (konfirmasi != 'y' && konfirmasi != 'Y' && konfirmasi != 'n' && konfirmasi != 'N')
+                    {
+                        cout << "\033[31mInput tidak valid! Harap masukkan 'y' untuk ya atau 'n' untuk tidak: \033[0m";
+                        cin >> konfirmasi;
+                    }
+
+                    if (konfirmasi == 'y' || konfirmasi == 'Y')
+                    {
+                        pesananList.erase(pesananList.begin() + idPesanan - 1); // Batalkan pesanan
+                        cout << "\033[32\nmPesanan ID " << idPesanan << " berhasil dibatalkan.\n\033[0m";
+                        this_thread::sleep_for(chrono::seconds(2));
+                    }
+                    else
+                    {
+                        cout << "Pembatalan pesanan dibatalkan.\n";
+                        this_thread::sleep_for(chrono::seconds(2));
+                    }
+
+                    valid = true; // Menandai bahwa ID valid telah diproses
                     break;
                 }
                 else
                 {
-                    cout << "Pesanan tidak ditemukan. Silakan coba lagi.\n";
+                    cout << "\033[31mPesanan dengan ID tersebut tidak ditemukan. Silakan coba lagi.\n\033[0m";
                 }
+            }
+
+            if (valid)
+            {
+                simpanPemesanan(); // Simpan perubahan setelah pembatalan berhasil
             }
 
             break;
         }
 
         case 4: // Kembali
-            cout << "Kembali ke menu utama.\n";
+            cout << "\nKembali ke menu utama.\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
         }
     } while (pilihan != 4);
 }
@@ -1340,6 +2069,8 @@ bool isPesananExist(const Pesanan &pesanan)
 
 void loadPemesanan()
 {
+    pesananList.clear();
+
     ifstream inFile("pemesanan.txt"); // Membuka file pemesanan
     if (inFile.is_open())
     {
@@ -1351,6 +2082,11 @@ void loadPemesanan()
             string field;
             string id;
             string statusPembayaran;
+            string nomorUrut;
+
+            // Baca Nomor Urut
+            getline(ss, nomorUrut, ','); // Membaca nomor urut
+            pesanan.nomorUrut = stoi(nomorUrut);
 
             // Baca ID Pesanan
             getline(ss, id, ',');
@@ -1376,11 +2112,14 @@ void loadPemesanan()
             getline(ss, statusPembayaran, ',');
             pesanan.statusPembayaran = (statusPembayaran == "Sudah Dibayar"); // Mengonversi status pembayaran
 
+            getline(ss, id, ',');
+            pesanan.totalHarga = stoi(id);
+
             // Tambahkan pesanan ke daftar pesanan
             pesananList.push_back(pesanan);
         }
         inFile.close();
-        cout << "Pemesanan berhasil dimuat dari file.\n";
+        cout << "Data pemesanan berhasil dimuat.\n";
     }
     else
     {
@@ -1409,19 +2148,22 @@ void simpanPemesanan()
     ofstream outFile("pemesanan.txt", ios::trunc);
     if (outFile.is_open())
     {
-        for (const Pesanan &pesanan : pesananList)
+        for (size_t i = 0; i < pesananList.size(); ++i)
         {
             outFile
-                << pesanan.idPesanan << ","
-                << pesanan.namaUser << ","
-                << pesanan.nomorHp << ","
-                << pesanan.idLapangan << ","
-                << pesanan.jam.hari << ","
-                << pesanan.jam.tanggal << ","
-                << pesanan.jam.jamMulai << ","
-                << pesanan.jam.jamSelesai << ","
-                << (pesanan.statusPembayaran ? "Sudah Dibayar" : "Belum Dibayar") << "\n";
+                << i + 1 << "," // Menggunakan indeks i untuk nomor urut
+                << pesananList[i].idPesanan << ","
+                << pesananList[i].namaUser << ","
+                << pesananList[i].nomorHp << ","
+                << pesananList[i].idLapangan << ","
+                << pesananList[i].jam.hari << ","
+                << pesananList[i].jam.tanggal << ","
+                << pesananList[i].jam.jamMulai << ","
+                << pesananList[i].jam.jamSelesai << ","
+                << (pesananList[i].statusPembayaran ? "Sudah Dibayar" : "Belum Dibayar") << ","
+                << pesananList[i].totalHarga << "\n";
         }
+
         outFile.close();
         cout << "Data pemesanan berhasil disimpan.\n";
     }
@@ -1476,10 +2218,10 @@ void userMenu()
 {
     int pilihan;
     string namaUser;
-    clearScreen();
 
     do
     {
+        clearScreen();
         cout << "\n===== MENU USER =====\n";
         cout << "1. Buat Pesanan\n";
         cout << "2. Cek Pesanan\n";
@@ -1487,20 +2229,27 @@ void userMenu()
         cout << "Pilih: ";
         cin >> pilihan;
 
+        if (cin.fail() || pilihan < 1 || pilihan > 3)
+        {
+            cout << "\033[31m\nInput tidak valid! Harap masukkan angka antara 1 hingga 3.\033[0m\n";
+            cin.clear();                                         // Menghapus status error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Menghapus sisa input
+            this_thread::sleep_for(chrono::seconds(2));
+            continue; // Kembali ke awal do-while untuk mencoba lagi
+        }
+
         switch (pilihan)
         {
         case 1:
             buatPesanan();
             break;
         case 2:
-
             cekPesanan();
-
             break;
         case 3:
+            cout << "\nKembali ke menu utama...\n";
+            this_thread::sleep_for(chrono::seconds(2));
             break;
-        default:
-            cout << "Pilihan tidak valid.\n";
         }
     } while (pilihan != 3);
 }
@@ -1511,7 +2260,7 @@ string formatNomorInternasional()
     string nomor;
     while (true)
     {
-        cout << "Masukkan nomor HP (dalam format lokal atau internasional): ";
+        cout << "\nMasukkan nomor HP (dalam format lokal atau internasional): ";
         cin >> nomor;
 
         // Memeriksa apakah nomor sudah dalam format internasional
@@ -1527,7 +2276,7 @@ string formatNomorInternasional()
         else
         {
             // Jika nomor tidak valid, tampilkan pesan dan ulangi input
-            cerr << "Nomor tidak valid. Pastikan dimulai dengan +62 atau 0.\n";
+            cerr << "\033[31mNomor tidak valid. Pastikan dimulai dengan +62 atau 0.\033[0m\n";
         }
     }
 }
@@ -1543,8 +2292,8 @@ void kirimPesanWhatsApp(
     const string &totalHarga)
 {
     string sid = "AC525efca105257724b6b5a5be52d71215";        // Twilio Account SID
-    string token = "0a3b9d9871388e05d5ac676b731687a1";        // Twilio Auth Token
-    string contentSid = "HXe3a4cf8a57187688c94df5b4e3a2c6b0"; // ContentSid untuk template
+    string token = "e280d000be65a971c8c7e7a0a526574b";        // Twilio Auth Token
+    string contentSid = "HX6deef8a5d3f4a06a1ce49e3d52ff21c3"; // ContentSid untuk template
     string url = "https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Messages.json";
 
     // Buat ContentVariables JSON sesuai dengan parameter
@@ -1624,6 +2373,39 @@ string sendPostRequest(const string &url, const string &postData, const string &
     return response_string;
 }
 
+string sendGetRequest(const string &url, const string &auth_token)
+{
+    CURL *curl;
+    CURLcode res;
+    string readBuffer;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+
+    if (curl)
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, ("Authorization: Basic " + auth_token).c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+        res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK)
+        {
+            cout << "Curl request failed: " << curl_easy_strerror(res) << endl;
+        }
+
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+    }
+
+    // Mengembalikan hasil respons yang disimpan dalam readBuffer
+    return readBuffer;
+}
+
 // Fungsi untuk mengekstrak redirect_url dari respons JSON
 string extractRedirectUrl(const string &response)
 {
@@ -1660,6 +2442,31 @@ void bukaURL(const string &redirectUrl)
     system(command.c_str());
 }
 
+int getSnackPrice(int snackId, const vector<Snack> &snackList)
+{
+    for (const auto &snack : snackList)
+    {
+        if (snack.id == snackId)
+        {
+            return snack.harga;
+        }
+    }
+    return 0; // Jika snack tidak ditemukan
+}
+
+// Fungsi untuk mendapatkan nama snack berdasarkan ID
+string getSnackName(int snackId, const vector<Snack> &snackList)
+{
+    for (const auto &snack : snackList)
+    {
+        if (snack.id == snackId)
+        {
+            return snack.nama;
+        }
+    }
+    return "Unknown Snack";
+}
+
 // Fungsi untuk membuat pesanan
 void buatPesanan()
 {
@@ -1672,6 +2479,13 @@ void buatPesanan()
     cout << "Nama Tim Anda: ";
     cin.ignore(); // Untuk membersihkan buffer setelah membaca integer
     getline(cin, pesanan.namaUser);
+
+    if (pesanan.namaUser == "0")
+    {
+        cout << "Kembali ke menu.\n";
+        this_thread::sleep_for(chrono::seconds(2));
+        return;
+    }
 
     // Input nomor telepon
     pesanan.nomorHp = formatNomorInternasional(); // Format nomor menjadi internasional
@@ -1696,14 +2510,23 @@ void buatPesanan()
         // Jika tidak ada lapangan tersedia, kembali ke menu utama
         if (!adaLapanganTersedia)
         {
-            cout << "Maaf, tidak ada lapangan yang tersedia saat ini. Kembali ke menu utama.\n";
+            cout << "\033[31mMaaf, tidak ada lapangan yang tersedia saat ini. Kembali ke menu utama.\033[0m\n";
             break; // Keluar dari loop utama dan kembali ke menu utama
         }
 
         // Meminta input ID lapangan
         cout << "\nPilih ID Lapangan: ";
-        cin.ignore();
         cin >> pesanan.idLapangan;
+
+        cin.ignore();
+
+        if (cin.fail())
+        {
+            cout << "\033[31mInput tidak valid! Harap masukkan ID lapangan yang valid (angka).\033[0m\n";
+            cin.clear();                                         // Reset error flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear the invalid input from buffer
+            continue;                                            // Re-attempt input
+        }
 
         // Validasi ID lapangan
         bool lapanganValid = false;
@@ -1718,7 +2541,7 @@ void buatPesanan()
 
         if (!lapanganValid)
         {
-            cout << "ID Lapangan tidak valid atau tidak tersedia. Silakan pilih ID yang sesuai.\n";
+            cout << "\033[31mID Lapangan tidak valid atau tidak tersedia. Silakan pilih ID yang sesuai.\033[0m\n";
             continue; // Ulangi input ID lapangan jika tidak valid
         }
 
@@ -1740,7 +2563,7 @@ void buatPesanan()
             // Jika tidak ada jadwal tersedia untuk lapangan ini
             if (jadwalTersedia.empty())
             {
-                cout << "Tidak ada jadwal tersedia untuk lapangan ini. Silakan pilih lapangan lain.\n";
+                cout << "\033[31mTidak ada jadwal tersedia untuk lapangan ini. Silakan pilih lapangan lain.\033[0m\n";
                 break; // Kembali ke pemilihan lapangan
             }
 
@@ -1754,9 +2577,16 @@ void buatPesanan()
 
             // Meminta input nomor jadwal
             int jamIndex;
-            cout << "Pilih nomor jadwal: ";
-            cin.ignore();
+            cout << "\nPilih nomor jadwal: ";
             cin >> jamIndex;
+
+            if (cin.fail())
+            {
+                cout << "\033[31mInput tidak valid! Harap masukkan angka yang sesuai dengan opsi pembayaran.\033[0m\n";
+                cin.clear();                                         // Menghapus status error
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Menghapus sisa input di buffer
+                continue;
+            }
 
             if (jamIndex >= 1 && jamIndex <= static_cast<int>(jadwalTersedia.size()))
             {
@@ -1770,11 +2600,12 @@ void buatPesanan()
 
                 if (durasiJam <= 0)
                 {
-                    cout << "Durasi pemesanan tidak valid.\n";
+                    cout << "\033[31mDurasi pemesanan tidak valid.\033[0m\n";
                     continue; // Ulangi pemilihan jadwal
                 }
 
-                pesanan.totalHarga = lapanganList[pesanan.idLapangan - 1].harga * durasiJam;
+                pesanan.totalHargaLapangan = lapanganList[pesanan.idLapangan - 1].harga * durasiJam;
+                // pesananList.push_back(pesanan);
 
                 // Ubah status jadwal menjadi "Sudah Dipesan"
                 for (size_t i = 0; i < jadwalList.size(); ++i)
@@ -1785,13 +2616,13 @@ void buatPesanan()
                         break;
                     }
                 }
-
+                pesanan.totalHarga = pesanan.totalHargaLapangan;
                 jadwalDitemukan = true;
                 break; // Keluar dari loop pemilihan jadwal
             }
             else
             {
-                cout << "Pilihan tidak valid, silakan pilih nomor jadwal yang benar.\n";
+                cout << "\033[31mPilihan tidak valid, silakan pilih nomor jadwal yang benar.\033[0m\n";
             }
         }
 
@@ -1809,8 +2640,8 @@ void buatPesanan()
     }
     else
     {
-        cout << "\nPilih Snack (masukkan ID, 0 untuk selesai):\n";
 
+        // Menampilkan daftar snack yang tersedia
         for (size_t i = 0; i < snackList.size(); ++i)
         {
             cout << snackList[i].id << ". " << snackList[i].nama << " (" << snackList[i].harga << ")\n";
@@ -1821,54 +2652,169 @@ void buatPesanan()
             int snackId;
             cout << "\nMasukkan ID Snack (0 untuk selesai): ";
             cin >> snackId;
-            if (snackId == 0)
-                break; // Berhenti jika ID snack 0
 
+            // Menangani input yang tidak valid untuk ID Snack
+            if (cin.fail())
+            {
+                cout << "\033[31mInput tidak valid! Harap masukkan angka yang sesuai dengan ID Snack.\033[0m\n";
+                cin.clear();                                         // Reset error flag
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear invalid input from buffer
+                continue;                                            // Kembali ke awal loop untuk mencoba input ID snack lagi
+            }
+
+            // Jika pengguna memasukkan 0, keluar dari loop
+            if (snackId == 0)
+            {
+                cout << "\nPemilihan snack selesai.\n";
+                break;
+            }
+
+            // Validasi ID Snack
             bool snackValid = false;
             for (size_t i = 0; i < snackList.size(); ++i)
             {
                 if (snackList[i].id == snackId)
                 {
-                    int jumlah;
-                    cout << "Masukkan jumlah " << snackList[i].nama << ": ";
-                    cin >> jumlah;
-                    pesanan.snackIds.push_back(snackId);
-                    pesanan.totalHarga += snackList[i].harga * jumlah; // Menambahkan harga snack ke total
                     snackValid = true;
-                    break;
+                    int jumlah;
+
+                    // Validasi input jumlah snack
+                    while (true)
+                    {
+                        cout << "\nMasukkan jumlah " << snackList[i].nama << ": ";
+                        cin >> jumlah;
+
+                        // Pengecekan input jumlah
+                        if (cin.fail())
+                        {
+                            cout << "\033[31mInput jumlah tidak valid! Harap masukkan angka yang sesuai.\033[0m\n";
+                            cin.clear();                                         // Reset error flag
+                            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear invalid input from buffer
+                            continue;                                            // Kembali ke awal loop untuk mencoba input jumlah lagi
+                        }
+
+                        if (jumlah <= 0)
+                        {
+                            cout << "\033[31mJumlah harus lebih besar dari 0.\033[0m\n";
+                            continue; // Kembali ke awal loop untuk mencoba input jumlah lagi
+                        }
+
+                        // Jika input jumlah valid, proses pesanan snack
+                        bool snackSudahAda = false;
+                        for (size_t j = 0; j < pesanan.snackIds.size(); ++j)
+                        {
+                            if (pesanan.snackIds[j] == snackId)
+                            {
+                                pesanan.snackQuantities[j] += jumlah;              // Tambahkan jumlah snack yang sama
+                                pesanan.totalHarga += snackList[i].harga * jumlah; // Update total harga
+                                snackSudahAda = true;
+                                break;
+                            }
+                        }
+
+                        if (!snackSudahAda)
+                        {
+                            pesanan.snackIds.push_back(snackId);
+                            pesanan.snackQuantities.push_back(jumlah);
+                            pesanan.totalHarga += snackList[i].harga * jumlah;
+                        }
+
+                        break; // Keluar dari loop pemilihan jumlah setelah berhasil
+                    }
+
+                    break; // Keluar dari loop pemilihan snack setelah berhasil
                 }
             }
 
             if (!snackValid)
             {
-                cout << "Snack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\n";
+                cout << "\033[31mSnack dengan ID tersebut tidak ditemukan. Silakan coba lagi.\033[0m\n";
             }
         }
     }
-    pesananList.push_back(pesanan);
+
+    // Output total harga
     cout << "\nPesanan berhasil dibuat! Total Harga: Rp " << pesanan.totalHarga << "\n";
 
     // Pilihan pembayaran
     int pilihanBayar;
     cout << "\nPilih opsi pembayaran:\n";
     cout << "1. Bayar Sekarang\n";
-    cout << "2. Bayar Nanti\n";
-    cout << "Pilih: ";
-    cin >> pilihanBayar;
+    cout << "2. Bayar Di Tempat\n";
+    while (true)
+    {
+        cout << "Pilih: ";
+        cin >> pilihanBayar;
+
+        // Memeriksa apakah input valid dan berupa angka
+        if (cin.fail() || pilihanBayar < 1 || pilihanBayar > 2)
+        {
+            // Menghapus input yang salah
+            cin.clear();                                         // Menghapus status error cin
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Menghapus karakter yang tersisa di buffer
+            cout << "\033[31mInput tidak valid. Harap masukkan angka 1 atau 2.\033[0m\n";
+        }
+        else
+        {
+            // Jika input valid
+            break; // Keluar dari loop jika input sudah benar
+        }
+    }
 
     if (pilihanBayar == 1)
     {
-        pesanan.statusPembayaran = true;
-        updatePesananStatus(pesanan.idPesanan, true);
-        cout << "Status Pembayaran: Dibayar\n";          // Debugging
         string idPesanan = to_string(pesanan.idPesanan); // ID Pesanan
+        string namaLapangan = NamaLapangan(lapanganList, pesanan.idLapangan);
+
+        // Menyusun item_details, termasuk lapangan dan snack
+        string itemDetails = "[";
+
+        // Menambahkan lapangan ke item_details
+        itemDetails += "{"
+                       "\"id\": \"" +
+                       to_string(pesanan.idLapangan) + "\","
+                                                       "\"name\": \"" +
+                       namaLapangan + "\","
+                                      "\"price\": " +
+                       to_string(pesanan.totalHargaLapangan) + ","
+                                                               "\"quantity\": 1"
+                                                               "}";
+
+        // Menambahkan snack ke item_details
+        for (size_t i = 0; i < pesanan.snackIds.size(); ++i)
+        {
+            string snackName = getSnackName(pesanan.snackIds[i], snackList); // Ambil nama snack berdasarkan ID
+            int snackPrice = getSnackPrice(pesanan.snackIds[i], snackList);  // Ambil harga snack berdasarkan ID
+            int snackId = pesanan.snackIds[i];
+            int snackQuantity = pesanan.snackQuantities[i]; // Ambil jumlah snack yang dipesan
+
+            // Menambahkan snack ke itemDetails
+            itemDetails += ",{"
+                           "\"id\": \"" +
+                           to_string(snackId) + "\","
+                                                "\"name\": \"" +
+                           snackName + "\","
+                                       "\"price\": " +
+                           to_string(snackPrice) + ","
+                                                   "\"quantity\": " +
+                           to_string(snackQuantity) + "}";
+        }
+
+        // Menutup array item_details
+        itemDetails += "]";
+
+        // Menyusun postData dan memastikan gross_amount sesuai dengan total harga item
         string postData = "{"
                           "\"transaction_details\": {"
                           "\"order_id\": \"" +
-                          idPesanan + "\","
-                                      "\"gross_amount\": " +
-                          to_string(pesanan.totalHarga) + "}"
-                                                          "}";
+                          to_string(pesanan.idPesanan) + "\","
+                                                         "\"gross_amount\": " +
+                          to_string(pesanan.totalHarga) + "},"
+                                                          "\"item_details\": " +
+                          itemDetails + "}";
+
+        // Output untuk memverifikasi JSON yang dikirim
+        cout << "JSON yang dikirim: " << postData << endl;
 
         // URL API Midtrans dan server key
         string url = "https://app.sandbox.midtrans.com/snap/v1/transactions";
@@ -1877,6 +2823,8 @@ void buatPesanan()
 
         // Kirim request ke Midtrans
         string response = sendPostRequest(url, postData, auth_token);
+
+        // response midtrans
         cout << "Response dari Midtrans: " << response << endl;
 
         // Mengekstrak URL redirect untuk pembayaran
@@ -1885,13 +2833,81 @@ void buatPesanan()
         {
             cout << "\nMengarahkan Anda ke halaman pembayaran Midtrans...\n";
             bukaURL(redirectUrl);
-            // Mengarahkan ke URL pembayaran
+            string statusResponse;
+            bool pembayaranSelesai = false;
 
-            simpanPemesanan();
+            // Loop untuk meminta konfirmasi pembayaran sampai selesai
+            while (!pembayaranSelesai)
+            {
+                string konfirmasi;
+                cout << "\033[33m\nApakah Anda sudah melakukan pembayaran? (y/n): \033[0m";
+                cin >> konfirmasi;
+
+                if (konfirmasi == "y" || konfirmasi == "Y")
+                {
+                    // Jika pengguna sudah bayar, cek status pembayaran
+                    cout << "\nMemeriksa status pembayaran...\n";
+
+                    // URL untuk cek status transaksi menggunakan order_id
+                    string url = "https://api.sandbox.midtrans.com/v2/" + to_string(pesanan.idPesanan) + "/status";
+
+                    // Pastikan sendGetRequest mengembalikan respons status
+                    statusResponse = sendGetRequest(url, auth_token);
+
+                    if (statusResponse.empty())
+                    {
+                        cout << "\033[31mGagal mendapatkan respons dari server. Coba lagi nanti.\n\033[0m";
+                        continue; // Lanjutkan loop untuk mencoba lagi
+                    }
+
+                    cout << "Status Response: " << statusResponse << endl;
+
+                    // Cek apakah transaksi tidak ditemukan (status_code = 404)
+                    if (statusResponse.find("\"status_code\":\"404\"") != string::npos)
+                    {
+                        cout << "\033[31mTransaksi tidak ditemukan. Mengarahkan Anda kembali ke halaman pembayaran...\n\033[0m";
+                        bukaURL(redirectUrl); // Buka kembali URL pembayaran
+                        continue;             // Lanjutkan loop untuk menunggu konfirmasi ulang
+                    }
+
+                    // Memeriksa apakah pembayaran berhasil (transaction_status = settlement)
+                    if (statusResponse.find("\"transaction_status\": \"settlement\"") != string::npos)
+                    {
+                        cout << "\033[32mPembayaran berhasil! Pesanan selesai.\n\033[0m";
+                        this_thread::sleep_for(chrono::seconds(2));
+                        pesanan.statusPembayaran = true;
+                        updatePesananStatus(pesanan.idPesanan, true); // Update status pesanan ke berhasil
+                        pembayaranSelesai = true;                     // Keluar dari loop karena pembayaran berhasil
+                    }
+                    // Memeriksa apakah pembayaran masih pending (transaction_status = pending)
+                    else if (statusResponse.find("\"transaction_status\": \"pending\"") != string::npos)
+                    {
+                        cout << "\033[33mPembayaran masih pending. Memeriksa lagi dalam 10 detik...\n\033[0m";
+                        this_thread::sleep_for(chrono::seconds(10)); // Menunggu 10 detik untuk memeriksa lagi
+                    }
+                    else
+                    {
+                        cout << "\033[32mPembayaran berhasil! Pesanan selesai.\n\033[0m";
+                        pesanan.statusPembayaran = true;
+                        updatePesananStatus(pesanan.idPesanan, true); // Update status pesanan ke gagal
+                        pembayaranSelesai = true;                     // Keluar dari loop jika status tidak valid
+                    }
+                }
+                else if (konfirmasi == "n" || konfirmasi == "N")
+                {
+                    // Jika pengguna belum bayar, beri tahu dan minta untuk membayar
+                    cout << "\033[31m\nSilakan lakukan pembayaran dan coba lagi.\n\033[0m";
+                    bukaURL(redirectUrl);
+                }
+                else
+                {
+                    cout << "\033[31m\nInput tidak valid. Harap masukkan 'y' atau 'n'.\n\033[0m";
+                }
+            }
         }
         else
         {
-            cout << "\nTerjadi kesalahan saat mendapatkan URL pembayaran.\n";
+            cout << "\033[31m\nPembayaran belum selesai, menunggu konfirmasi lebih lanjut...\n\033[0m";
         }
     }
     else if (pilihanBayar == 2)
@@ -1899,12 +2915,10 @@ void buatPesanan()
         pesanan.statusPembayaran = false;
         updatePesananStatus(pesanan.idPesanan, false);
         cout << "Status Pembayaran: Belum Dibayar\n"; // Debugging
-        cout << "\nPembayaran ditunda, pesanan berhasil dibuat dan menunggu pembayaran.\n";
-        simpanPemesanan();
+        cout << "\nPembayaran ditunda, pesanan berhasil dibuat dan silahkan bayar di tempat.\n";
     }
-
-    // Simpan data pesanan yang telah diperbarui
-    // pesananList.push_back(pesanan); // Pastikan pesanan yang sudah diupdate statusnya ditambahkan ke list
+    pesananList.push_back(pesanan);
+    simpanPemesanan();
 
     // Mengirimkan notifikasi WhatsApp setelah pesanan selesai
     cout << "\nMengirimkan notifikasi WhatsApp...\n";
@@ -1918,7 +2932,17 @@ void buatPesanan()
 
     // Kembali ke menu pengguna
     cout << "\nKembali ke menu pengguna...\n";
-    userMenu(); // Misalnya fungsi ini yang menampilkan menu pengguna
+
+    int countdown = 10; // Waktu hitung mundur dalam detik
+
+    while (countdown > 0)
+    {
+        cout << "\rMenunggu " << countdown << " kembali ke menu pengguna..." << flush;
+        this_thread::sleep_for(chrono::seconds(1));
+        countdown--;
+    }
+    userMenu();
+    // Misalnya fungsi ini yang menampilkan menu pengguna
 }
 
 void cekPesanan()
@@ -1931,45 +2955,75 @@ void cekPesanan()
 
     if (pesananList.empty())
     {
-        cout << "Tidak ada data pesanan.\n";
+        cout << "\nTidak ada data pesanan.\n";
+        cout << "\nTekan Enter untuk kembali ke menu...\n";
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get(); // Tunggu input Enter dari pengguna
         return;
     }
 
     // Meminta pengguna memasukkan nama
     string namaUser;
-    cout << "Masukkan nama untuk mencari pesanan: ";
+    cout << "\nMasukkan nama untuk mencari pesanan (atau 0 untuk batal): ";
     cin.ignore(); // Mengabaikan karakter newline yang tersisa dari input sebelumnya
     getline(cin, namaUser);
 
     // Jika nama kosong, tampilkan pesan kesalahan
     if (namaUser.empty())
     {
-        cout << "Nama tidak boleh kosong!\n";
+        cout << "\033[31mNama tidak boleh kosong!\033[0m\n";
+
+        // Menunggu hingga input yang valid, tanpa harus tekan Enter
+        while (namaUser.empty())
+        {
+            cout << "\nMasukkan nama yang valid: ";
+            getline(cin, namaUser);
+        }
+    }
+
+    if (namaUser == "0")
+    {
+        cout << "\nKembali ke menu.\n";
+        cout << "\nTekan Enter untuk kembali ke menu...\n";
+        cin.get(); // Tunggu input Enter dari pengguna
         return;
     }
+
+    // Mengubah input nama pengguna menjadi huruf kecil agar tidak peka terhadap kapitalisasi
+    transform(namaUser.begin(), namaUser.end(), namaUser.begin(), ::tolower);
 
     // Proses pencarian nama dalam pesananList
     bool ditemukan = false;
     for (size_t i = 0; i < pesananList.size(); ++i)
     {
-        if (pesananList[i].namaUser == namaUser) // Perbandingan langsung
+        string namaPesanan = pesananList[i].namaUser;
+
+        // Mengubah nama yang ada dalam pesananList menjadi huruf kecil juga
+        transform(namaPesanan.begin(), namaPesanan.end(), namaPesanan.begin(), ::tolower);
+
+        if (namaPesanan == namaUser) // Perbandingan tidak sensitif terhadap huruf kapital
         {
             ditemukan = true;
             string namaLapangan = NamaLapangan(lapanganList, jadwalList[i].idLapangan);
+            cout << "\nNomor Urut Pesanan : " << pesananList[i].nomorUrut << "\n";
             cout << "Pesanan ID : " << pesananList[i].idPesanan << "\n";
             cout << "Nama: " << pesananList[i].namaUser << "\n";
-            cout << "Lapangan ID: " << namaLapangan << "\n";
+            cout << "Nama Lapangan: " << namaLapangan << "\n";
             cout << "Jam: " << pesananList[i].jam.hari << ", " << pesananList[i].jam.tanggal
                  << " (" << pesananList[i].jam.jamMulai << " - " << pesananList[i].jam.jamSelesai << ")\n";
-            cout << "Total Harga: Rp " << pesananList[i].totalHarga << "\n";
             cout << "Status Pembayaran: "
                  << (pesananList[i].statusPembayaran ? "Sudah Dibayar" : "Belum Dibayar") << "\n";
+            cout << "Total Harga : " << pesananList[i].totalHarga << "\n";
             cout << "--------------------------\n";
         }
     }
 
     if (!ditemukan)
     {
-        cout << "Pesanan tidak ditemukan untuk nama \"" << namaUser << "\".\n";
+        cout << "\033[33mPesanan tidak ditemukan untuk nama \"" << namaUser << "\".\033[0m\n";
     }
+
+    // Tunggu pengguna membaca output sebelum kembali ke menu
+    cout << "Tekan Enter untuk kembali ke menu...\n";
+    cin.get(); // Tunggu input Enter dari pengguna
 }

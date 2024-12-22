@@ -6,3 +6,4 @@
 6,Es Krim,12000
 7,Jus Jeruk,15000
 8,Cemilan,7000
+9,jahe,20000
