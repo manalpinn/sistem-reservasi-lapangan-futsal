@@ -1,10 +1,3 @@
-1,Lapangan A,100000,Tersedia
-2,Lapangan B,150000,Tersedia
-3,Lapangan C,200000,Tersedia
-4,Lapangan Sintetis,40000,Tersedia
-5,Lapangan bagus,70000,Penuh
-6,Lapangan madrid,20000,Tersedia
-7,Lapangan Tanah,130000,Tersedia
-8,suku,800000,Penuh
-9,mantap,40000,Penuh
-10,test,70000,Tersedia
+1,Lapangan Sintetis,80000,Tersedia
+2,Lapangan Interlock,90000,Tersedia
+3,Lapangan Vinyl,100000,Tersedia
