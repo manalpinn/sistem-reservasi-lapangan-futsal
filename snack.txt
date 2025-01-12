@@ -1,10 +1,2 @@
-1,Keripik,15000
-2,Es Teh,5000
-3,Pizza,45000
-4,Burger,30000
-5,Popcorn,10000
-6,Es Krim,12000
-7,Jus Jeruk,15000
-8,Cemilan,7000
-9,jahe,20000
-10,usu jahe,15000
+1,Air Mineral,5000
+2,Es Teh,3000

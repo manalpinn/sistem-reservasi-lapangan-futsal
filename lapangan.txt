@@ -1,3 +1,2 @@
 1,Lapangan Sintetis,80000,Tersedia
 2,Lapangan Interlock,90000,Tersedia
-3,Lapangan Vinyl,100000,Tersedia

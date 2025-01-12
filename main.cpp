@@ -148,7 +148,7 @@ void loginMenu()
 
     do
     {
-        // clearScreen();
+        clearScreen();
 
         cout << R"(
 ▗▄▄▖ ▗▄▄▄▖▗▄▄▖ ▗▖ ▗▖ ▗▄▖ ▗▖ ▗▖    ▗▄▄▄▖▗▖ ▗▖▗▄▄▄▖ ▗▄▄▖ ▗▄▖ ▗▖   
@@ -768,7 +768,7 @@ string getWaktuPesan()
     time_t t = time(nullptr);
     tm *now = localtime(&t);
     char buf[80];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H", now); // Format hanya sampai jam
+    strftime(buf, sizeof(buf), "%Y-%m-%d", now); // Format hanya sampai jam
     return string(buf);
 }
 
@@ -1152,6 +1152,7 @@ void crudJadwal()
                         // Jika konfirmasi ya, hapus data
                         jadwalList.erase(jadwalList.begin() + index - 1);
                         perbaruiIDJadwal(); // Perbarui ID agar tetap berurutan
+                        simpanJadwal();
                         cout << "\033[32m\nData berhasil dihapus.\033[0m\n";
                         this_thread::sleep_for(chrono::seconds(1));
                         break;
@@ -1190,7 +1191,7 @@ void crudJadwal()
             }
             else
             {
-                tampilkanJadwal(); // Menampilkan semua lapangan yang ada
+                tampilkanJadwal(); // Menampilkan semua jadwal yang ada
             }
 
             int id;
@@ -1216,7 +1217,7 @@ void crudJadwal()
                 {
                     cout << "Kembali ke menu kelola jadwal.\n";
                     this_thread::sleep_for(chrono::seconds(1));
-                    break; // Kembali ke menu Kelola Jadwal
+                    break;
                 }
 
                 // Mencari jadwal berdasarkan ID
@@ -1224,12 +1225,14 @@ void crudJadwal()
                 {
                     if (jadwalList[i].id == id)
                     {
+                        int idLapangan = jadwalList[i].idLapangan; // Ambil ID Lapangan dari jadwal
+                        found = true;
+
                         // Cek apakah jadwal sudah dipesan
                         if (jadwalList[i].status == "Sudah Dipesan")
                         {
                             cout << "\033[31mJadwal ini sudah dipesan dan tidak bisa diedit.\033[0m\n";
                             this_thread::sleep_for(chrono::seconds(2));
-                            found = true;
                             break; // Keluar jika jadwal sudah dipesan
                         }
 
@@ -1242,56 +1245,32 @@ void crudJadwal()
                             string hariBaru;
                             getline(cin, hariBaru);
 
-                            // Jika input kosong, tampilkan pesan error
-                            if (hariBaru.empty())
+                            // Validasi hari
+                            if (hariBaru.empty() || hariBaru.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") != string::npos)
                             {
-                                cout << "\033[31mInput tidak boleh kosong.\033[0m\n";
-                                continue; // Minta input ulang
-                            }
-
-                            // Convert input menjadi lowercase untuk memudahkan perbandingan
-                            string hariLower = hariBaru;
-                            transform(hariLower.begin(), hariLower.end(), hariLower.begin(), ::tolower);
-
-                            // Periksa apakah hari tersebut valid
-                            if (hariLower == "senin" || hariLower == "selasa" || hariLower == "rabu" ||
-                                hariLower == "kamis" || hariLower == "jumat" || hariLower == "sabtu" || hariLower == "minggu")
-                            {
-                                // Format huruf awal kapital
-                                hariLower[0] = toupper(hariLower[0]); // Huruf pertama menjadi kapital
-                                jadwalList[i].hari = hariLower;       // Set hari baru dengan format kapital
-                                break;                                // Keluar dari loop setelah berhasil
-                            }
-                            else
-                            {
-                                // Tampilkan pesan hanya jika input tidak valid
                                 cout << "\033[31mNama hari tidak valid. Silakan coba lagi.\033[0m\n";
+                                continue;
                             }
+
+                            transform(hariBaru.begin(), hariBaru.end(), hariBaru.begin(), ::tolower);
+                            hariBaru[0] = toupper(hariBaru[0]); // Format kapital pada huruf pertama
+                            jadwalList[i].hari = hariBaru;      // Set hari baru
+                            break;
                         }
 
                         // Edit Tanggal
                         while (true)
                         {
-                            cout << "\nTanggal Baru (format YY-MM-DD, " << jadwalList[i].tanggal << "): ";
+                            cout << "\nTanggal Baru (format YYYY-MM-DD, " << jadwalList[i].tanggal << "): ";
                             string tanggalBaru;
                             getline(cin, tanggalBaru);
 
-                            // Validasi format dengan regex
-                            if (regex_match(tanggalBaru, regex("^\\d{2}-\\d{2}-\\d{2}$")))
+                            if (regex_match(tanggalBaru, regex("^\\d{4}-\\d{2}-\\d{2}$")))
                             {
-                                int yy, mm, dd;
-                                sscanf(tanggalBaru.c_str(), "%d-%d-%d", &yy, &mm, &dd);
-
-                                // Validasi rentang nilai tahun, bulan, dan hari
-                                if (dd > 0 && dd <= 31 && mm > 0 && mm <= 12 && yy >= 0)
-                                {
-                                    // Jika valid, set tanggal baru dan keluar dari loop
-                                    jadwalList[i].tanggal = tanggalBaru;
-                                    break;
-                                }
+                                jadwalList[i].tanggal = tanggalBaru;
+                                break;
                             }
 
-                            // Jika input tidak valid, tampilkan pesan kesalahan
                             cout << "\033[31mFormat atau nilai tanggal tidak valid. Silakan coba lagi.\033[0m\n";
                         }
 
@@ -1302,14 +1281,16 @@ void crudJadwal()
                             string jamMulaiBaru;
                             getline(cin, jamMulaiBaru);
 
-                            if (regex_match(jamMulaiBaru, regex("\\d{2}:\\d{2}")))
+                            if (regex_match(jamMulaiBaru, regex("^\\d{2}:\\d{2}$")))
                             {
                                 bool jamTersedia = true;
+
                                 for (const auto &jadwal : jadwalList)
                                 {
-                                    if (jadwal.id != jadwalList[i].id && jadwal.hari == jadwalList[i].hari && jadwal.tanggal == jadwalList[i].tanggal)
+                                    if (jadwal.idLapangan == idLapangan && jadwal.id != jadwalList[i].id &&
+                                        jadwal.hari == jadwalList[i].hari && jadwal.tanggal == jadwalList[i].tanggal)
                                     {
-                                        int hhMulai, mmMulai, hhSelesai, mmSelesai;
+                                        int hhMulai, mmMulai;
                                         sscanf(jamMulaiBaru.c_str(), "%d:%d", &hhMulai, &mmMulai);
                                         int waktuMulai = hhMulai * 60 + mmMulai;
 
@@ -1320,23 +1301,22 @@ void crudJadwal()
                                         int jWaktuMulai = jhhMulai * 60 + jmmMulai;
                                         int jWaktuSelesai = jhhSelesai * 60 + jmmSelesai;
 
-                                        // Cek apakah jam mulai baru bertabrakan dengan jam yang sudah ada
-                                        if ((waktuMulai >= jWaktuMulai && waktuMulai < jWaktuSelesai) || (waktuMulai < jWaktuMulai && waktuMulai >= jWaktuMulai))
+                                        if ((waktuMulai >= jWaktuMulai && waktuMulai < jWaktuSelesai))
                                         {
                                             jamTersedia = false;
-                                            break; // Jika ada jadwal yang bertabrakan
+                                            break;
                                         }
                                     }
                                 }
 
-                                if (!jamTersedia)
-                                {
-                                    cout << "\033[31mJam mulai yang Anda masukkan sudah tersedia dengan jadwal yang sudah ada. Silakan masukkan waktu yang berbeda.\033[0m\n";
-                                }
-                                else
+                                if (jamTersedia)
                                 {
                                     jadwalList[i].jamMulai = jamMulaiBaru;
                                     break;
+                                }
+                                else
+                                {
+                                    cout << "\033[31mJam mulai bertabrakan dengan jadwal lain. Silakan masukkan waktu berbeda.\033[0m\n";
                                 }
                             }
                             else
@@ -1345,55 +1325,23 @@ void crudJadwal()
                             }
                         }
 
-                        // Validasi jam selesai baru
+                        // Edit Jam Selesai
                         while (true)
                         {
                             cout << "\nJam Selesai Baru (format HH:MM, " << jadwalList[i].jamSelesai << "): ";
                             string jamSelesaiBaru;
                             getline(cin, jamSelesaiBaru);
 
-                            if (regex_match(jamSelesaiBaru, regex("\\d{2}:\\d{2}")))
+                            if (regex_match(jamSelesaiBaru, regex("^\\d{2}:\\d{2}$")))
                             {
                                 if (jamSelesaiBaru > jadwalList[i].jamMulai)
                                 {
-                                    bool jamTersedia = true;
-                                    for (const auto &jadwal : jadwalList)
-                                    {
-                                        if (jadwal.id != jadwalList[i].id && jadwal.hari == jadwalList[i].hari && jadwal.tanggal == jadwalList[i].tanggal)
-                                        {
-                                            int hhMulai, mmMulai, hhSelesai, mmSelesai;
-                                            sscanf(jamSelesaiBaru.c_str(), "%d:%d", &hhMulai, &mmMulai);
-                                            int waktuSelesai = hhMulai * 60 + mmMulai;
-
-                                            int jhhMulai, jmmMulai, jhhSelesai, jmmSelesai;
-                                            sscanf(jadwal.jamMulai.c_str(), "%d:%d", &jhhMulai, &jmmMulai);
-                                            sscanf(jadwal.jamSelesai.c_str(), "%d:%d", &jhhSelesai, &jmmSelesai);
-
-                                            int jWaktuMulai = jhhMulai * 60 + jmmMulai;
-                                            int jWaktuSelesai = jhhSelesai * 60 + jmmSelesai;
-
-                                            // Cek apakah jam selesai baru bertabrakan dengan jadwal lain
-                                            if ((waktuSelesai >= jWaktuMulai && waktuSelesai < jWaktuSelesai) || (waktuSelesai <= jWaktuSelesai && waktuSelesai > jWaktuMulai))
-                                            {
-                                                jamTersedia = false;
-                                                break; // Jika ada jadwal yang bertabrakan
-                                            }
-                                        }
-                                    }
-
-                                    if (!jamTersedia)
-                                    {
-                                        cout << "\033[31mJam selesai yang Anda masukkan sudah tersedia dengan jadwal yang sudah ada. Silakan masukkan waktu yang berbeda.\033[0m\n";
-                                    }
-                                    else
-                                    {
-                                        jadwalList[i].jamSelesai = jamSelesaiBaru;
-                                        break;
-                                    }
+                                    jadwalList[i].jamSelesai = jamSelesaiBaru;
+                                    break;
                                 }
                                 else
                                 {
-                                    cout << "\033[31mJam Selesai harus lebih besar dari Jam Mulai. Silakan masukkan ulang.\033[0m\n";
+                                    cout << "\033[31mJam selesai harus lebih besar dari jam mulai. Silakan masukkan ulang.\033[0m\n";
                                 }
                             }
                             else
@@ -1402,29 +1350,10 @@ void crudJadwal()
                             }
                         }
 
-                        // Edit Status
-                        while (true)
-                        {
-                            cout << "\nStatus Baru (" << jadwalList[i].status << ") [Tersedia/Sudah Dipesan]: ";
-                            string statusBaru;
-                            getline(cin, statusBaru);
-
-                            if (statusBaru == "Tersedia" || statusBaru == "Sudah Dipesan")
-                            {
-                                jadwalList[i].status = statusBaru;
-                                break;
-                            }
-                            else
-                            {
-                                cout << "\033[31mInput tidak valid. Masukkan 'Tersedia' atau 'Sudah Dipesan'.\033[0m\n";
-                            }
-                        }
-
-                        found = true;
+                        // Simpan Perubahan
                         simpanJadwal();
                         cout << "\033[1;32m\nJadwal berhasil diedit.\033[0m\n";
                         this_thread::sleep_for(chrono::seconds(2));
-
                         break;
                     }
                 }
@@ -1440,6 +1369,7 @@ void crudJadwal()
             }
             break;
         }
+
         case 5: // Kembali
             cout << "\nKembali ke menu utama.\n";
             this_thread::sleep_for(chrono::seconds(2));
@@ -2213,7 +2143,7 @@ void crudPemesanan()
                 adaPesanan = false;
                 totalPemasukan = 0;
 
-                cout << "\nMasukkan tanggal (format YYYY-MM-DD) (atau ketik '0' untuk batal) : ";
+                cout << "\nMasukkan tanggal (format YYYY-MM-DD) (atau ketik '0' untuk batal): ";
                 getline(cin, tanggal);
 
                 // Kembali ke menu kelola pemesanan jika input adalah '0'
@@ -2243,17 +2173,18 @@ void crudPemesanan()
                             cout << "\nPesanan pada tanggal " << tanggal << ":\n";
                             cout << left
                                  << setw(5) << "No"
-                                 << setw(10) << "ID Pesanan"
+                                 << setw(15) << "ID Pesanan"
                                  << setw(20) << "Nama"
-                                 << setw(15) << "Total"
+                                 << setw(15) << "Total (Rp)"
                                  << setw(15) << "Status" << endl;
+                            cout << string(65, '-') << endl; // Tambahkan garis pemisah
                         }
 
                         cout << left
                              << setw(5) << noPesanan++
-                             << setw(10) << pesanan.idPesanan
+                             << setw(15) << pesanan.idPesanan
                              << setw(20) << pesanan.namaUser
-                             << "Rp " << setw(15) << pesanan.totalHarga
+                             << setw(15) << pesanan.totalHarga
                              << setw(15) << "Sudah DiBayar" << endl;
 
                         totalPemasukan += pesanan.totalHarga;
@@ -2279,6 +2210,7 @@ void crudPemesanan()
                 break;
             }
         }
+
         case 5:
             cout << "\nKembali ke menu utama.\n";
             this_thread::sleep_for(chrono::seconds(2));
@@ -2526,7 +2458,7 @@ void kirimPesanWhatsApp(
     const string &totalHarga)
 {
     string sid = "AC525efca105257724b6b5a5be52d71215";        // Twilio Account SID
-    string token = "000281e65542d4bee7dfafb44ff0e3e1";        // Twilio Auth Token
+    string token = "7710317ab52f54ea6f739ab4773ea4f0";        // Twilio Auth Token
     string contentSid = "HX6deef8a5d3f4a06a1ce49e3d52ff21c3"; // ContentSid untuk template
     string url = "https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Messages.json";
 
@@ -2710,13 +2642,13 @@ void buatPesanan()
     cout << "\n===== BUAT PESANAN =====\n";
     pesanan.idPesanan = generateId(); // Pastikan generateId() menghasilkan ID unik
     // Input nama
-    cout << "Nama Tim Anda: ";
+    cout << "Nama Tim Anda (atau ketik '0' untuk batal): ";
     cin.ignore(); // Untuk membersihkan buffer setelah membaca integer
     getline(cin, pesanan.namaUser);
 
     if (pesanan.namaUser == "0")
     {
-        cout << "Kembali ke menu.\n";
+        cout << "\nKembali ke menu.\n";
         this_thread::sleep_for(chrono::seconds(2));
         return;
     }
@@ -3227,7 +3159,6 @@ void cekPesanan()
 
     if (namaUser == "0")
     {
-        cout << "\nKembali ke menu.\n";
         cout << "\nTekan Enter untuk kembali ke menu...\n";
         cin.get(); // Tunggu input Enter dari pengguna
         return;
